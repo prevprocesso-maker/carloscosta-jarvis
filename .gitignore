@@ -1,0 +1,95 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+env/
+.venv/
+ENV/
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+*.egg
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+pytest-cache/
+.pytest_cache/
+
+# Type checking
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Ruff
+.ruff_cache/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project specific
+config/api_keys.json
+config/settings.yaml
+memory/long_term.json
+logs/
+*.log
+voice_session.log
+uploads/
+data/
+*.sqlite
+*.db
+
+# WhatsApp Bridge
+whatsapp_bridge/auth/
+whatsapp_bridge/media/
+whatsapp_bridge/*.log
+whatsapp_bridge/*.json
+whatsapp_bridge/node_modules/
+
+# Models (large files - use Git LFS)
+models/*.task
+models/whisper-*/
+
+# Build artifacts
+*.exe
+*.msi
+*.dmg
+*.app
+*.AppImage
+dist/
+build/
+
+# Docker
+.docker/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Temporary
+tmp/
+temp/
+*.tmp
+*.temp
