@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-# Transport local: sounddevice + Whisper + Gemini Live TTS
-# Implementação em local/audio.py
+from .audio import LocalAudioTransport, WhisperSTT, LocalVAD, GeminiLiveTTS
 
-__all__ = []
+__all__ = ["LocalAudioTransport", "WhisperSTT", "LocalVAD", "GeminiLiveTTS"]

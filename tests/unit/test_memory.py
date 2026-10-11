@@ -32,7 +32,7 @@ def test_memory_manager_basic():
 
             # Teste format_for_prompt
             prompt = manager.format_for_prompt(store)
-            assert "Identidade" in prompt
+            assert "Identity" in prompt  # category.title() produces "Identity"
             assert "Raphael" in prompt
 
             # Teste delete
