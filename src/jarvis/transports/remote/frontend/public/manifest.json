@@ -1,0 +1,36 @@
+{
+  "name": "JARVIS CyberBot",
+  "short_name": "JARVIS",
+  "description": "Assistente pessoal estilo J.A.R.V.I.S. com voz nativa e gestos",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#00060a",
+  "theme_color": "#00d4ff",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["productivity", "utilities"],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Ativar JARVIS",
+      "short_name": "Ativar",
+      "description": "Ativa o assistente de voz",
+      "url": "/?action=activate",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    }
+  ],
+  "prefer_related_applications": false
+}

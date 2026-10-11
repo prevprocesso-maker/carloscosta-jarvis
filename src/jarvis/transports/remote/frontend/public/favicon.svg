@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <radialGradient id="orbGrad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#00d4ff" stop-opacity="0.3"/>
+      <stop offset="50%" stop-color="#00d4ff" stop-opacity="0.1"/>
+      <stop offset="100%" stop-color="#00060a" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Outer ring -->
+  <circle cx="50" cy="50" r="45" fill="none" stroke="#00d4ff" stroke-width="2" opacity="0.6" filter="url(#glow)"/>
+  
+  <!-- Middle ring -->
+  <circle cx="50" cy="50" r="35" fill="none" stroke="#00d4ff" stroke-width="1.5" opacity="0.4"/>
+  
+  <!-- Inner core -->
+  <circle cx="50" cy="50" r="20" fill="url(#orbGrad)" filter="url(#glow)"/>
+  
+  <!-- Center dot -->
+  <circle cx="50" cy="50" r="6" fill="#00d4ff" filter="url(#glow)"/>
+  
+  <!-- Accent ring -->
+  <circle cx="50" cy="50" r="28" fill="none" stroke="#ff6b00" stroke-width="1" opacity="0.5" stroke-dasharray="8,4"/>
+</svg>

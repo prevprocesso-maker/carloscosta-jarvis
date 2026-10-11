@@ -12,6 +12,7 @@ from jarvis.core.actions.registry import list_actions, get_openai_schemas
 from jarvis.core.memory.manager import MemoryManager
 from jarvis.core.session import SessionManager
 from jarvis.transports.local import LocalAudioTransport
+from jarvis.transports.remote import RemoteVoiceServer
 from jarvis.core.config import AppSettings, get_settings, get_base_dir as _get_base_dir
 
 
@@ -22,6 +23,7 @@ class Container:
         self._brain_factory: Optional[BrainFactory] = None
         self._session_mgr: Optional[SessionManager] = None
         self._transport_local: Optional[LocalAudioTransport] = None
+        self._transport_remote: Optional[RemoteVoiceServer] = None
         self._initialized = False
 
     @property
@@ -62,6 +64,12 @@ class Container:
             self._transport_local = LocalAudioTransport(brain, self.session_mgr)
         return self._transport_local
 
+    @property
+    def transport_remote(self) -> RemoteVoiceServer:
+        if self._transport_remote is None:
+            self._transport_remote = RemoteVoiceServer(self.brain_factory, self.session_mgr)
+        return self._transport_remote
+
     def get_available_tools(self) -> list[dict]:
         return get_openai_schemas()
 
@@ -80,8 +88,17 @@ class Container:
         self._initialized = True
 
     async def start_transports(self) -> None:
+        # Start local transport (desktop)
         if self.settings.transport_local.enabled:
             await self.transport_local.start(
+                on_audio_out=self._audio_out_callback,
+                on_text_out=self._text_out_callback,
+                on_tool_call=self._tool_call_callback,
+            )
+        
+        # Start remote transport (web voice)
+        if self.settings.transport_remote.enabled:
+            await self.transport_remote.start(
                 on_audio_out=self._audio_out_callback,
                 on_text_out=self._text_out_callback,
                 on_tool_call=self._tool_call_callback,
@@ -96,6 +113,12 @@ class Container:
     async def _tool_call_callback(self, tool_call: ToolCall) -> dict:
         from jarvis.core.actions.registry import execute_action
         return execute_action(tool_call.name, tool_call.args, self.session_mgr)
+
+    def get_fastapi_app(self):
+        """Retorna app FastAPI do transport remoto para montagem externa se necessário."""
+        if self._transport_remote:
+            return self._transport_remote.get_app()
+        return None
 
 
 def create_application(config_path: Optional[str] = None) -> Container:

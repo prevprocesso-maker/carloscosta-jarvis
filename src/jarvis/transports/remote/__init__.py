@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-# Transport remoto: FastAPI + WebSocket + Gemini Live API
-# Implementação em remote/server.py
+from .gemini_live import GeminiLiveTransport
+from .server import RemoteVoiceServer, create_remote_voice_server
 
-__all__ = []
+__all__ = ["GeminiLiveTransport", "RemoteVoiceServer", "create_remote_voice_server"]
