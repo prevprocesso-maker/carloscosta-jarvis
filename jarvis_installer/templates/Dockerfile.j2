@@ -1,0 +1,68 @@
+# JARVIS Dockerfile - Multi-stage build
+# Stage 1: Frontend build
+FROM node:22-alpine AS frontend-builder
+
+WORKDIR /app/frontend
+COPY src/jarvis/transports/remote/frontend/package*.json ./
+RUN npm ci
+
+COPY src/jarvis/transports/remote/frontend/ ./
+RUN npm run build
+
+# Stage 2: Python runtime
+FROM python:3.12-slim AS runtime
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ffmpeg \
+    libsndfile1 \
+    libportaudio2 \
+    portaudio19-dev \
+    libasound2-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install NVIDIA Container Toolkit for GPU support (optional)
+# RUN apt-get update && apt-get install -y nvidia-container-toolkit
+
+# Create non-root user
+RUN useradd -m -u 1000 jarvis
+
+WORKDIR /app
+
+# Copy Python requirements and install
+COPY pyproject.toml uv.lock* ./
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
+    pip install --no-cache-dir -e ".[all]"
+
+# Copy application code
+COPY src/ ./src/
+COPY config/ ./config/
+COPY assets/ ./assets/
+COPY models/ ./models/
+
+# Copy built frontend
+COPY --from=frontend-builder /app/frontend/dist ./src/jarvis/transports/remote/frontend/dist
+
+# Create directories
+RUN mkdir -p /app/data /app/logs /app/config /app/updates/pending /app/updates/applied /app/updates/rollback
+
+# Set ownership
+RUN chown -R jarvis:jarvis /app
+
+# Switch to non-root user
+USER jarvis
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz', timeout=5)" || exit 1
+
+# Expose ports
+EXPOSE 8000 8765
+
+# Environment variables
+ENV PYTHONPATH=/app/src
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+
+# Entry point
+ENTRYPOINT ["python", "-m", "jarvis"]

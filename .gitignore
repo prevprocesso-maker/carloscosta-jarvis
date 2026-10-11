@@ -67,6 +67,10 @@ whatsapp_bridge/*.log
 whatsapp_bridge/*.json
 whatsapp_bridge/node_modules/
 
+# Frontend
+src/jarvis/transports/remote/frontend/node_modules/
+src/jarvis/transports/remote/frontend/dist/
+
 # Models (large files - use Git LFS)
 models/*.task
 models/whisper-*/

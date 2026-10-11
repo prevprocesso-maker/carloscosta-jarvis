@@ -1,0 +1,67 @@
+# JARVIS Configuration Template
+# Copy to config.yaml and customize
+
+app:
+  name: "jarvis"
+  version: "2.0.0-stable"
+  channel: "stable"  # stable, beta, nightly
+  install_date: ""  # Auto-filled on install
+  install_id: ""    # Auto-generated UUID
+
+user:
+  name: "Raphael"
+  language: "pt-BR"
+  timezone: "America/Sao_Paulo"
+
+gemini:
+  api_key: ""  # REQUIRED: Get from https://aistudio.google.com/apikey
+  fast_model: "gemini-3.5-flash-lite"
+  fast_fallback_model: "gemini-3.1-flash-lite"
+  reserve_model: "gemini-2.5-flash"
+  live_model: "gemini-2.5-flash-native-audio-preview"
+  live_voice: "Charon"
+
+transports:
+  local:
+    enabled: true
+    whisper_model: "large-v3"  # large-v3, medium, small, base
+    whisper_device: "auto"     # auto, cuda, cpu
+    vad_threshold: 0.09
+  remote:
+    enabled: true
+    host: "0.0.0.0"
+    port: 8000
+    token: ""  # Auto-generated if empty
+    tls:
+      enabled: false
+      cert_path: ""
+      key_path: ""
+  webhook:
+    enabled: true
+    whatsapp_port: 8765
+
+ui:
+  desktop_enabled: true
+  web_enabled: true
+  theme: "stark"
+
+update:
+  channel: "stable"  # stable, beta, nightly
+  auto_check: true
+  auto_apply: false
+  check_interval_hours: 6
+  backup_retention_days: 30
+  rollback_on_health_failure: true
+  health_check_timeout_seconds: 30
+
+deploy:
+  docker_enabled: false
+  traefik_enabled: false
+  domain: ""
+  letsencrypt_email: ""
+
+logging:
+  level: "INFO"
+  rotation: "daily"
+  retention_days: 7
+  format: "json"

@@ -1,0 +1,112 @@
+version: '3.8'
+
+services:
+  jarvis:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: jarvis:{{ jarvis_version }}
+    container_name: jarvis
+    restart: unless-stopped
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - APP_TOKEN=${APP_TOKEN}
+      - USER_NAME=${USER_NAME}
+      - PYTHONPATH=/app/src
+    volumes:
+      - jarvis_data:/app/data
+      - jarvis_config:/app/config
+      - jarvis_logs:/app/logs
+      - jarvis_updates:/app/updates
+      - /tmp/.X11-unix:/tmp/.X11-unix  # For GUI apps on Linux
+    ports:
+      - "8000:8000"   # Web UI + WebSocket
+      - "8765:8765"   # WhatsApp Bridge
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - jarvis_net
+
+  # Optional: Traefik reverse proxy with Let's Encrypt
+  traefik:
+    image: traefik:v2.11
+    container_name: jarvis-traefik
+    restart: unless-stopped
+    command:
+      - --api.insecure=true
+      - --providers.docker=true
+      - --entrypoints.web.address=:80
+      - --entrypoints.websecure.address=:443
+      - --certificatesresolvers.letsencrypt.acme.httpchallenge=true
+      - --certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web
+      - --certificatesresolvers.letsencrypt.acme.email=${LETSENCRYPT_EMAIL}
+      - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - letsencrypt:/letsencrypt
+    networks:
+      - jarvis_net
+    labels:
+      - traefik.enable=true
+    profiles:
+      - traefik
+
+  # Optional: Prometheus for metrics
+  prometheus:
+    image: prom/prometheus:v2.47
+    container_name: jarvis-prometheus
+    restart: unless-stopped
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - jarvis_net
+    profiles:
+      - monitoring
+
+  # Optional: Grafana for dashboards
+  grafana:
+    image: grafana/grafana:10.2
+    container_name: jarvis-grafana
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
+    volumes:
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    networks:
+      - jarvis_net
+    profiles:
+      - monitoring
+
+volumes:
+  jarvis_data:
+  jarvis_config:
+  jarvis_logs:
+  jarvis_updates:
+  letsencrypt:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  jarvis_net:
+    driver: bridge

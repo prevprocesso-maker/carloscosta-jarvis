@@ -1,0 +1,44 @@
+[Unit]
+Description=JARVIS CyberBot Assistant
+Documentation=https://github.com/prevprocesso-maker/carloscosta-jarvis
+After=network.target sound.target
+Wants=network.target
+
+[Service]
+Type=simple
+User={{ user }}
+Group={{ group }}
+WorkingDirectory={{ working_dir }}
+ExecStart={{ python_exec }} -m jarvis
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=jarvis
+Environment=PATH={{ venv_bin }}:{{ system_path }}
+Environment=PYTHONPATH={{ working_dir }}/src
+Environment=JARVIS_CONFIG={{ config_file }}
+
+# Resource limits (adjust as needed)
+MemoryMax=2G
+CPUQuota=200%
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths={{ working_dir }}
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+RemoveIPC=true
+PrivateDevices=true
+DevicePolicy=closed
+LockPersonality=true
+MemoryDenyWriteExecute=true
+
+[Install]
+WantedBy=multi-user.target
