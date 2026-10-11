@@ -50,6 +50,20 @@ dependencies = [
     "httpx>=0.26",
     "structlog>=24.0",
     "python-dotenv>=1.0",
+    # Observability & Telemetry
+    "aiohttp>=3.9",
+    "packaging>=23.0",
+    "jinja2>=3.1",
+    "textual>=0.50",
+    "huggingface-hub>=0.21",
+    # Knowledge Base & RAG
+    "sentence-transformers>=2.2",
+    "chromadb>=0.4",
+    "sqlite-vec>=0.1",
+    # Guardrails & Security
+    "email-validator>=2.1",
+    # Versioning & Release
+    "gitpython>=3.1",
     # Installer specific
     "typer>=0.9",
     "rich>=13.0",

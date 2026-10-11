@@ -1,7 +1,12 @@
 from __future__ import annotations
 
 import asyncio
-import typer
+import json
+import platform
+import subprocess
+import uuid
+import os
+import shutil
 from typing import Optional, List
 from pathlib import Path
 from rich.console import Console
@@ -17,6 +22,10 @@ from ..core.system import detect_system, check_python_version
 from ..core.config import DEFAULT_CONFIG, load_config, save_config, ensure_config_migrated
 from ..core.health import run_health_check
 from ..core.version import get_current_version, get_current_channel, Channel
+from ..core.telemetry import get_telemetry, init_telemetry
+from ..core.guardrails import get_guardrails, init_guardrails
+from ..core.knowledge import get_knowledge_base, init_knowledge_base
+from ..core.versioning import get_version_manager, get_release_manager, get_current_version, get_current_channel, bump_version, ReleaseChannel, MigrationManager
 from ..install.python_env import create_venv, install_jarvis_package, verify_installation, upgrade_pip
 from ..install.node_env import check_node_version, install_node_deps, build_frontend, ensure_node_available
 from ..install.docker_env import check_docker_available, check_docker_compose_available
@@ -566,6 +575,506 @@ def frontend_cmd(
         console.print("[green]Frontend cleaned[/green]")
     else:
         console.print(f"[red]Unknown action: {action}[/red]")
+
+
+# ==================== UNINSTALL ====================
+
+@app.command("uninstall")
+def uninstall_cmd(
+    keep_data: bool = typer.Option(True, "--keep-data", help="Keep config and data"),
+    force: bool = typer.Option(False, "--force", help="Skip confirmation"),
+):
+    """Desinstala JARVIS."""
+    paths = get_jarvis_paths()
+    
+    if not force:
+        if not Confirm.ask(f"Uninstall JARVIS from {paths.base}?"):
+            return
+    
+    # Stop service
+    try:
+        stop_service()
+        uninstall_service()
+    except Exception:
+        pass
+    
+    # Remove shortcuts
+    remove_shortcuts("JARVIS")
+    
+    # Remove files
+    if not keep_data:
+        import shutil
+        shutil.rmtree(paths.base, ignore_errors=True)
+        console.print("[green]Uninstalled completely[/green]")
+    else:
+        # Remove only binaries and builds
+        import shutil
+        if paths.venv.exists():
+            shutil.rmtree(paths.venv)
+        if paths.frontend_dist.exists():
+            shutil.rmtree(paths.frontend_dist)
+        console.print("[green]Uninstalled (data preserved)[/green]")
+
+
+# ==================== BENCHMARK ====================
+
+@app.command("benchmark")
+def benchmark_cmd(
+    iterations: int = typer.Option(10, "--iterations", "-n", help="Number of iterations"),
+):
+    """Benchmark de latência."""
+    asyncio.run(_benchmark_async(iterations))
+
+
+async def _benchmark_async(iterations: int):
+    console.print(f"[cyan]Running benchmark ({iterations} iterations)...[/cyan]")
+    
+    from ..core.brain import get_current_version
+    from ..core.config import load_config
+    from ..paths import get_jarvis_paths
+    
+    paths = get_jarvis_paths()
+    config = load_config(paths.config_file)
+    
+    # Initialize app
+    from ..bootstrap import create_application
+    app = create_application()
+    app.initialize_brains()
+    
+    from ..core.session import SessionManager
+    session_mgr = SessionManager()
+    
+    times = []
+    for i in range(iterations):
+        start = asyncio.get_event_loop().time()
+        # Simulate voice loop: text input -> brain -> response
+        context = session_mgr.get_or_create("benchmark", "test", f"bench_{i}")
+        async for _ in app.brain_factory.get("fast").process(session_mgr.get_or_create("benchmark", "test", f"bench_{i}"), text_input="que horas são"):
+            pass
+        elapsed = (asyncio.get_event_loop().time() - start) * 1000
+        times.append(elapsed)
+        if (i + 1) % 5 == 0:
+            console.print(f"  Iteration {i+1}: {elapsed:.1f}ms")
+    
+    avg = sum(times) / len(times)
+    p50 = sorted(times)[len(times)//2]
+    p95 = sorted(times)[int(len(times)*0.95)]
+    
+    console.print(f"\n[bold]Results ({iterations} iterations):[/bold]")
+    console.print(f"  Average: {avg:.1f}ms")
+    console.print(f"  Median (p50): {p50:.1f}ms")
+    console.print(f"  p95: {p95:.1f}ms")
+    console.print(f"  Min: {min(times):.1f}ms")
+    console.print(f"  Max: {max(times):.1f}ms")
+
+
+# ==================== TELEMETRY ====================
+
+@app.command("telemetry")
+def telemetry_cmd(
+    action: str = typer.Argument(..., help="Action: status, snapshot, flush"),
+):
+    """Gerencia telemetria e observabilidade."""
+    telemetry = get_telemetry()
+    
+    if action == "status":
+        snapshot = telemetry.get_telemetry_snapshot()
+        console.print(Panel.fit(f"[bold cyan]Telemetry Status[/bold cyan]", border_style="cyan"))
+        
+        table = Table(title="Telemetry Snapshot")
+        table.add_column("Metric", style="cyan")
+        table.add_column("Value", style="green")
+        for k, v in snapshot.items():
+            table.add_row(k, str(v))
+        console.print(table)
+    
+    elif action == "snapshot":
+        snapshot = telemetry.get_telemetry_snapshot()
+        console.print_json(json.dumps(snapshot, indent=2))
+    
+    elif action == "flush":
+        telemetry._flush_metrics()
+        console.print("[green]Metrics flushed[/green]")
+    
+    else:
+        console.print(f"[red]Unknown action: {action}[/red]")
+
+
+# ==================== GUARDRAILS ====================
+
+@app.command("guardrails")
+def guardrails_cmd(
+    action: str = typer.Argument(..., help="Action: list, check, approve, deny, audit"),
+    action_name: Optional[str] = typer.Argument(None, help="Action name to check"),
+    action_args: Optional[str] = typer.Argument(None, help="JSON args for action check"),
+    approval_id: Optional[str] = typer.Argument(None, help="Approval ID for approve/deny"),
+    approver: str = typer.Option("admin", "--approver", help="Approver name"),
+):
+    """Gerencia guardrails de segurança."""
+    guardrails = get_guardrails()
+    
+    if action == "list":
+        rules = guardrails.get_rules_summary()
+        table = Table(title="Guardrails Rules")
+        table.add_column("ID", style="cyan")
+        table.add_column("Name", style="green")
+        table.add_column("Category", style="yellow")
+        table.add_column("Risk", style="red")
+        table.add_column("Action", style="blue")
+        table.add_column("Enabled", style="green")
+        for r in rules:
+            table.add_row(r["id"], r["name"], r["category"], r["risk_level"], r["action"], str(r["enabled"]))
+        console.print(table)
+    
+    elif action == "check":
+        if not action_name:
+            console.print("[red]Action name required for check[/red]")
+            raise typer.Exit(1)
+        
+        args = json.loads(action_args) if action_args else {}
+        decision = guardrails.check_action(action_name, args)
+        
+        status = "[green]ALLOWED[/green]" if decision.allowed else "[red]BLOCKED[/red]"
+        console.print(f"Decision: {status}")
+        console.print(f"Risk: {decision.risk_level.value}")
+        console.print(f"Reason: {decision.reason}")
+        if decision.requires_approval:
+            console.print(f"Approval ID: {decision.approval_id}")
+    
+    elif action == "approve":
+        if not approval_id:
+            console.print("[red]Approval ID required[/red]")
+            raise typer.Exit(1)
+        if guardrails.approve(approval_id, approver):
+            console.print(f"[green]Approval {approval_id} granted by {approver}[/green]")
+        else:
+            console.print("[red]Approval not found[/red]")
+    
+    elif action == "deny":
+        if not approval_id:
+            console.print("[red]Approval ID required[/red]")
+            raise typer.Exit(1)
+        if guardrails.deny(approval_id, approver):
+            console.print(f"[yellow]Approval {approval_id} denied by {approver}[/yellow]")
+        else:
+            console.print("[red]Approval not found[/red]")
+    
+    elif action == "audit":
+        audit = guardrails.get_audit_log(50)
+        table = Table(title="Audit Log (last 50)")
+        table.add_column("Time", style="cyan")
+        table.add_column("User", style="green")
+        table.add_column("Action", style="yellow")
+        table.add_column("Allowed", style="green")
+        table.add_column("Risk", style="red")
+        table.add_column("Reason", style="white")
+        for entry in reversed(audit):
+            dec = entry["decision"]
+            table.add_row(
+                entry["timestamp"][:19],
+                entry["user"],
+                entry["action"],
+                "✓" if dec["allowed"] else "✗",
+                dec["risk_level"],
+                dec["reason"][:50]
+            )
+        console.print(table)
+    
+    else:
+        console.print(f"[red]Unknown action: {action}[/red]")
+
+
+# ==================== KNOWLEDGE BASE ====================
+
+@app.command("knowledge")
+def knowledge_cmd(
+    action: str = typer.Argument(..., help="Action: add, search, ask, list, stats"),
+    title: Optional[str] = typer.Option(None, "--title", help="Document title (for add)"),
+    content: Optional[str] = typer.Option(None, "--content", help="Document content (for add)"),
+    file_path: Optional[Path] = typer.Option(None, "--file", help="File path (for add)"),
+    dir_path: Optional[Path] = typer.Option(None, "--dir", help="Directory path (for add)"),
+    query: Optional[str] = typer.Option(None, "--query", "-q", help="Search query (for search/ask)"),
+    limit: int = typer.Option(5, "--limit", "-l", help="Result limit"),
+):
+    """Gerencia base de conhecimento RAG."""
+    kb = get_knowledge_base()
+    
+    if action == "add":
+        if file_path:
+            asyncio.run(_kb_add_file(kb, file_path))
+        elif dir_path:
+            asyncio.run(_kb_add_dir(kb, dir_path))
+        elif title and content:
+            asyncio.run(_kb_add_doc(kb, title, content))
+        else:
+            console.print("[red]Provide --title --content, --file, or --dir[/red]")
+    
+    elif action == "search":
+        if not query:
+            console.print("[red]Query required for search[/red]")
+            raise typer.Exit(1)
+        asyncio.run(_kb_search(kb, query, limit))
+    
+    elif action == "ask":
+        if not query:
+            console.print("[red]Query required for ask[/red]")
+            raise typer.Exit(1)
+        asyncio.run(_kb_ask(kb, query))
+    
+    elif action == "list":
+        asyncio.run(_kb_list(kb))
+    
+    elif action == "stats":
+        asyncio.run(_kb_stats(kb))
+    
+    else:
+        console.print(f"[red]Unknown action: {action}[/red]")
+
+
+async def _kb_add_file(kb: KnowledgeBase, file_path: Path):
+    doc = await kb.add_file(file_path)
+    console.print(f"[green]Added document: {doc.title} ({doc.id})[/green]")
+
+
+async def _kb_add_dir(kb: KnowledgeBase, dir_path: Path):
+    docs = await kb.add_directory(dir_path)
+    console.print(f"[green]Added {len(docs)} documents from {dir_path}[/green]")
+
+
+async def _kb_add_doc(kb: KnowledgeBase, title: str, content: str):
+    doc = await kb.add_document(title, content)
+    console.print(f"[green]Added document: {doc.title} ({doc.id})[/green]")
+
+
+async def _kb_search(kb: KnowledgeBase, query: str, limit: int):
+    results = await kb.search(query, limit=limit)
+    if not results:
+        console.print("[yellow]No results found[/yellow]")
+        return
+    
+    table = Table(title=f"Search Results for '{query}'")
+    table.add_column("Score", style="cyan")
+    table.add_column("Title", style="green")
+    table.add_column("Snippet", style="yellow")
+    for r in results:
+        table.add_row(f"{r.score:.3f}", r.document.title, r.snippet[:80])
+    console.print(table)
+
+
+async def _kb_ask(kb: KnowledgeBase, question: str):
+    with console.status("[bold]Thinking..."):
+        result = await kb.ask(question)
+    
+    console.print(Panel.fit(f"[bold cyan]Question:[/bold cyan] {question}", border_style="cyan"))
+    console.print(Panel.fit(f"[bold green]Answer:[/bold green]\n{result.get('context', 'No context')}", border_style="green"))
+    
+    if result.get("sources"):
+        table = Table(title="Sources")
+        table.add_column("Title", style="green")
+        table.add_column("Score", style="cyan")
+        for src in result["sources"]:
+            table.add_row(src["title"], f"{src['score']:.3f}")
+        console.print(table)
+
+
+async def _kb_list(kb: KnowledgeBase):
+    docs = kb.list_documents(20)
+    if not docs:
+        console.print("[yellow]No documents in knowledge base[/yellow]")
+        return
+    
+    table = Table(title="Knowledge Base Documents")
+    table.add_column("ID", style="cyan")
+    table.add_column("Title", style="green")
+    table.add_column("Type", style="yellow")
+    table.add_column("Source", style="blue")
+    table.add_column("Tags", style="magenta")
+    for d in docs:
+        table.add_row(d.id, d.title, d.doc_type.value, d.source[:40], ", ".join(d.tags[:3]))
+    console.print(table)
+
+
+async def _kb_stats(kb: KnowledgeBase):
+    stats = kb.get_stats()
+    console.print(Panel.fit(
+        f"[bold cyan]Knowledge Base Stats[/bold cyan]\n"
+        f"Documents: {stats['documents']}\n"
+        f"Chunks: {stats['chunks']}\n"
+        f"Store: {stats['store_path']}",
+        border_style="cyan"
+    ))
+
+
+# ==================== VERSIONING ====================
+
+@app.command("version")
+def version_cmd(
+    action: str = typer.Argument(..., help="Action: show, bump, migrate, release"),
+    component: Optional[str] = typer.Argument(None, help="Component to bump: major, minor, patch"),
+    channel: Optional[str] = typer.Option(None, "--channel", help="Release channel"),
+    target: Optional[str] = typer.Option(None, "--target", help="Target version for migrate/rollback"),
+    message: str = typer.Option("", "--message", "-m", help="Release message"),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Dry run for migrate"),
+):
+    """Gerencia versionamento e releases."""
+    vm = get_version_manager()
+    
+    if action == "show":
+        current = get_current_version()
+        console.print(Panel.fit(
+            f"[bold cyan]Current Version[/bold cyan]\n"
+            f"Version: [green]{current}[/green]\n"
+            f"Channel: [yellow]{get_current_channel().value}[/yellow]",
+            border_style="cyan"
+        ))
+    
+    elif action == "bump":
+        if not component:
+            console.print("[red]Component required: major, minor, patch[/red]")
+            raise typer.Exit(1)
+        new_version = bump_version(component)
+        console.print(f"[green]Version bumped to {new_version}[/green]")
+    
+    elif action == "migrate":
+        vm = get_version_manager()
+        if dry_run:
+            console.print("[yellow]Dry run - showing pending migrations[/yellow]")
+            current = get_current_version()
+            manager = MigrationManager()
+            pending = manager.get_pending(str(current))
+            for m in pending:
+                console.print(f"  {m.version}: {m.name} - {m.description}")
+        else:
+            if not target:
+                console.print("[red]Target version required for migrate[/red]")
+                raise typer.Exit(1)
+            config = load_config(get_jarvis_paths().config_file)
+            migrated = vm.migration_manager.migrate(config, target)
+            save_config(migrated, get_jarvis_paths().config_file)
+            console.print(f"[green]Migrated to {target}[/green]")
+    
+    elif action == "rollback":
+        vm = get_version_manager()
+        if not target:
+            console.print("[red]Target version required for rollback[/red]")
+            raise typer.Exit(1)
+        config = load_config(get_jarvis_paths().config_file)
+        rolled_back = vm.migration_manager.rollback(config, target)
+        save_config(rolled_back, get_jarvis_paths().config_file)
+        console.print(f"[yellow]Rolled back to {target}[/yellow]")
+    
+    elif action == "release":
+        if not message:
+            console.print("[red]Release message required (--message)[/red]")
+            raise typer.Exit(1)
+        
+        rm = get_release_manager()
+        current = get_current_version()
+        
+        # Build assets
+        console.print("[cyan]Building release assets...[/cyan]")
+        # TODO: Build artifacts
+        
+        console.print(f"[yellow]Release creation not fully automated yet[/yellow]")
+        console.print(f"Would create release: v{current} - {message}")
+    
+    else:
+        console.print(f"[red]Unknown action: {action}[/red]")
+
+
+# ==================== GUARDRAILS (alias) ====================
+
+@app.command("security")
+def security_cmd(
+    action: str = typer.Argument(..., help="Action: check, rules, audit"),
+    action_name: Optional[str] = typer.Argument(None, help="Action to check"),
+    action_args: Optional[str] = typer.Argument(None, help="JSON args"),
+):
+    """Alias para guardrails (segurança)."""
+    guardrails = get_guardrails()
+    
+    if action == "check":
+        if not action_name:
+            console.print("[red]Action name required[/red]")
+            raise typer.Exit(1)
+        args = json.loads(action_args) if action_args else {}
+        decision = guardrails.check_action(action_name, args)
+        
+        if decision.allowed:
+            console.print(f"[green]✓ ALLOWED[/green] - {decision.reason}")
+        else:
+            console.print(f"[red]✗ BLOCKED[/red] - {decision.reason}")
+            if decision.requires_approval:
+                console.print(f"  Approval ID: {decision.approval_id}")
+    
+    elif action == "rules":
+        rules = guardrails.get_rules_summary()
+        table = Table(title="Security Rules")
+        table.add_column("ID", style="cyan")
+        table.add_column("Name", style="green")
+        table.add_column("Category", style="yellow")
+        table.add_column("Risk", style="red")
+        table.add_column("Action", style="blue")
+        for r in rules:
+            table.add_row(r["id"], r["name"], r["category"], r["risk_level"], r["action"])
+        console.print(table)
+    
+    elif action == "audit":
+        audit = guardrails.get_audit_log(20)
+        table = Table(title="Recent Security Audit")
+        table.add_column("Time", style="cyan")
+        table.add_column("Action", style="yellow")
+        table.add_column("Allowed", style="green")
+        table.add_column("Risk", style="red")
+        table.add_column("Reason", style="white")
+        for entry in reversed(audit):
+            dec = entry["decision"]
+            table.add_row(
+                entry["timestamp"][:19],
+                entry["action"],
+                "✓" if dec["allowed"] else "✗",
+                dec["risk_level"],
+                dec["reason"][:60]
+            )
+        console.print(table)
+    
+    else:
+        console.print(f"[red]Unknown action: {action}[/red]")
+
+
+# ==================== KNOWLEDGE BASE (alias) ====================
+
+@app.command("kb")
+def kb_cmd(
+    action: str = typer.Argument(..., help="Action: add, search, ask, list, stats"),
+    title: Optional[str] = typer.Option(None, "--title", help="Document title"),
+    content: Optional[str] = typer.Option(None, "--content", help="Document content"),
+    file_path: Optional[Path] = typer.Option(None, "--file", help="File path"),
+    dir_path: Optional[Path] = typer.Option(None, "--dir", help="Directory path"),
+    query: Optional[str] = typer.Option(None, "--query", "-q", help="Query"),
+    limit: int = typer.Option(5, "--limit", "-l", help="Limit"),
+):
+    """Alias para knowledge (base de conhecimento)."""
+    # Delegate to knowledge command
+    from .commands import knowledge_cmd
+    import sys
+    sys.argv = ["kb", action]
+    if title: sys.argv.extend(["--title", title])
+    if content: sys.argv.extend(["--content", content])
+    if file_path: sys.argv.extend(["--file", str(file_path)])
+    if dir_path: sys.argv.extend(["--dir", str(dir_path)])
+    if query: sys.argv.extend(["--query", query])
+    if limit != 5: sys.argv.extend(["--limit", str(limit)])
+    # Just call the knowledge function
+    asyncio.run({
+        "add": lambda: _kb_add_file(get_knowledge_base(), file_path) if file_path else
+                     _kb_add_dir(get_knowledge_base(), dir_path) if dir_path else
+                     _kb_add_doc(get_knowledge_base(), title, content),
+        "search": lambda: _kb_search(get_knowledge_base(), query, limit),
+        "ask": lambda: _kb_ask(get_knowledge_base(), query),
+        "list": lambda: _kb_list(get_knowledge_base()),
+        "stats": lambda: _kb_stats(get_knowledge_base()),
+    }.get(action, lambda: console.print(f"[red]Unknown action: {action}[/red]"))())
 
 
 # ==================== UNINSTALL ====================
