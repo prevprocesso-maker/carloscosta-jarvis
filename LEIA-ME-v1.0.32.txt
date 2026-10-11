@@ -1,0 +1,58 @@
+====================================================================
+ JARVIS CyberBot v1.0.32 - o que mudou e o que o cliente precisa
+ Gerado em 08/10/2026
+====================================================================
+
+Continua valendo: a chave Gemini gratis e obrigatoria (engrenagem ->
+CHAVE, aistudio.google.com/apikey).
+
+
+RESPOSTA MAIS RAPIDA
+--------------------
+  - Conversa (cumprimento, pergunta, opiniao, curiosidade) agora e
+    respondida direto pela voz, sem passar pelo cerebro: a voz comeca
+    em cerca de 1,5 a 2 segundos.
+  - Pedidos de acao no computador, pesquisa, clima e noticias
+    continuam indo para o cerebro, como antes.
+  - Quando o cerebro gratis do Google esta fora do ar, o servidor
+    responde junto na hora, sem a espera de antes.
+
+
+VOZ
+---
+  - So a voz escolhida fala. Nao existe mais troca para outra voz
+    (local ou de reserva) no meio da conversa.
+  - Se a fala sair pela metade, ele completa o que faltou.
+  - Se o Google travar, ele tenta de novo sozinho; se mesmo assim nao
+    sair, a resposta fica escrita na conversa.
+  - Ao fechar, o JARVIS encerra as conexoes de voz direito: reabrir
+    logo depois nao da mais erro de limite.
+
+
+COMPUTER USE
+------------
+  - Botao novo COMPUTER USE na barra: clique e diga (ou digite) o que
+    ele deve fazer no computador. Durante a tarefa o botao vira PARAR.
+  - ESC para na hora (menos de meio segundo) e ele ja avisa que parou.
+  - "Ative e aguarde minhas instrucoes" agora so pergunta o que fazer,
+    em vez de ficar esperando sozinho.
+
+
+PERSONALIZAR AS CORES
+---------------------
+  - Engrenagem -> aba CORES: escolha a cor de cada parte (cor
+    principal, fundo, textos, nucleo em cada estado e cada botao da
+    barra).
+  - Passe o mouse no quadro de cores para ver a cor exata (RGB e
+    codigo #) na previa; clique para aplicar. Muda na hora e fica
+    salvo. VOLTAR A ORIGINAL e RESTAURAR TODAS desfazem.
+
+
+O QUE NAO VAI NO PACOTE (de proposito)
+--------------------------------------
+  - Nenhuma chave de API.
+  - Nenhuma sessao de WhatsApp, nenhum banco de conversa, nenhuma
+    mensagem agendada de outra pessoa.
+  - Nenhuma identidade de dispositivo remoto.
+  - Nenhum perfil de microfone, cores escolhidas, projeto do Cowork,
+    log, backup ou cache de uso.

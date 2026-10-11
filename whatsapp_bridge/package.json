@@ -1,0 +1,21 @@
+{
+  "name": "mark-xlviii-whatsapp-bridge",
+  "version": "1.0.0",
+  "private": true,
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "^6.7.18",
+    "express": "^4.19.2",
+    "qrcode": "^1.5.4",
+    "pino": "^9.3.2",
+    "cors": "^2.8.5",
+    "ffmpeg-static": "^5.2.0",
+    "mime-types": "^2.1.35"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
