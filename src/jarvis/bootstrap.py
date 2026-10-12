@@ -28,7 +28,8 @@ def _linux_pelo_lancador() -> None:
 
 
 # Carrega filtro de warnings antes de bibliotecas pesadas
-_os.environ.setdefault("PYTHONWARNINGS", "ignore")
+# NOTE: Não definimos PYTHONWARNINGS=ignore globalmente para permitir UserWarning (ex: SSL verify=False)
+# Bibliotecas específicas (numpy, tensorflow) terão seus warnings filtrados individualmente se necessário
 _os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "3")
 _os.environ.setdefault("GLOG_minloglevel", "3")
 try:
@@ -36,7 +37,8 @@ try:
 except Exception:
     pass
 
-_warnings.simplefilter("ignore")
+# Não aplicamos simplefilter("ignore") global para preservar UserWarning importantes
+# (ex: SSL verification disabled). Configuração de warnings é feita no entrypoint (__main__.py)
 
 # ── Saída de texto à prova de emoji ────────────────────────────────────────
 def _saida_de_texto_a_prova_de_emoji() -> None:

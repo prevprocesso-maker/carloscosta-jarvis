@@ -164,3 +164,45 @@ def export_registry() -> dict:
         "actions": [action_to_dict(s) for s in list_actions()],
         "namespaces": get_namespaces(),
     }
+
+
+def register_opensquad_skills(opensquad_schemas: list[dict]) -> int:
+    """Registra skills do OpenSquad como actions no registry.
+    
+    Args:
+        opensquad_schemas: Lista de schemas no formato OpenAI function calling
+            (com keys 'type' e 'function' contendo name, description, parameters)
+        
+    Returns:
+        Número de skills registradas
+    """
+    count = 0
+    for schema in opensquad_schemas:
+        # Handle both formats: OpenAI format (type + function) and raw format
+        if schema.get("type") == "function" and "function" in schema:
+            func = schema["function"]
+            name = func.get("name", "")
+            description = func.get("description", "")
+            parameters = func.get("parameters", {})
+        else:
+            name = schema.get("name", "")
+            description = schema.get("description", "")
+            parameters = schema.get("parameters", {})
+        
+        if not name or name in _action_registry:
+            continue
+            
+        # Cria função wrapper que executa a skill via OpenSquad bridge
+        async def make_skill_func(skill_name: str, **kwargs):
+            from src.jarvis.integrations import execute_opensquad_skill
+            return await execute_opensquad_skill(skill_name, kwargs)
+        
+        # Registra usando o decorator action
+        @action(name=name, namespace="opensquad", description=description)
+        async def registered_skill(**kwargs):
+            skill_name = name  # Captura o nome atual
+            return await make_skill_func(skill_name, **kwargs)
+        
+        count += 1
+    
+    return count

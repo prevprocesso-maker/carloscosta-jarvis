@@ -204,6 +204,21 @@ export class GestureRecognizerWrapper {
   }
 
   private handleGestureAction(gesture: string, handedness: string, confidence: number): void {
+    const eventMap: Record<string, string> = {
+      'fist': 'gesture:fist',
+      'v_sign': 'gesture:v_sign',
+      'thumbs_up': 'gesture:thumbs_up',
+      'thumbs_down': 'gesture:thumbs_down',
+      'point': 'gesture:point',
+      'open_palm': 'gesture:open_palm',
+      'love': 'gesture:love',
+    };
+
+    const eventName = eventMap[gesture];
+    if (eventName) {
+      window.dispatchEvent(new CustomEvent(eventName, { detail: { gesture, handedness, confidence } }));
+    }
+
     switch (gesture) {
       case 'fist':
         // Close panel under cursor
@@ -214,20 +229,16 @@ export class GestureRecognizerWrapper {
       case 'v_sign':
         // Toggle microphone
         this.hud?.addTranscript('Sistema', 'Microfone alternado (V)', 'system');
-        // Trigger mic toggle via global handler
-        window.dispatchEvent(new CustomEvent('gesture:v_sign'));
         break;
         
       case 'thumbs_up':
         // Confirm action
         this.hud?.addTranscript('Sistema', 'Confirmado (joinha)', 'system');
-        window.dispatchEvent(new CustomEvent('gesture:thumbs_up'));
         break;
         
       case 'thumbs_down':
         // Cancel/deny
         this.hud?.addTranscript('Sistema', 'Cancelado (joinha pra baixo)', 'system');
-        window.dispatchEvent(new CustomEvent('gesture:thumbs_down'));
         break;
     }
   }

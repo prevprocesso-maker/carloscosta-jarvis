@@ -20,11 +20,54 @@ declare global {
 }
 
 // Register AudioWorklet (async IIFE)
-(async () => {
-  if ('audioWorklet' in AudioContext.prototype) {
-    await AudioContext.prototype.audioWorklet.addModule('/src/audio/worklet.js');
-  }
-})();
+    (async () => {
+      if ('audioWorklet' in AudioContext.prototype) {
+        await AudioContext.prototype.audioWorklet.addModule('/src/audio/worklet.js');
+      }
+    })();
+
+    // Gesture event handlers - send to backend via WebSocket
+    window.addEventListener('gesture:fist', () => {
+      if (state.ws?.isConnected) {
+        state.ws.sendControl({ type: 'gesture', gesture: 'fist', confidence: 0.9, handedness: 'Right' });
+      }
+    });
+
+    window.addEventListener('gesture:v_sign', () => {
+      if (state.ws?.isConnected) {
+        state.ws.sendControl({ type: 'gesture', gesture: 'v_sign', confidence: 0.9, handedness: 'Right' });
+      }
+    });
+
+    window.addEventEventListener('gesture:thumbs_up', () => {
+      if (state.ws?.isConnected) {
+        state.ws.sendControl({ type: 'gesture', gesture: 'thumbs_up', confidence: 0.9, handedness: 'Right' });
+      }
+    });
+
+    window.addEventListener('gesture:thumbs_down', () => {
+      if (state.ws?.isConnected) {
+        state.ws.sendControl({ type: 'gesture', gesture: 'thumbs_down', confidence: 0.9, handedness: 'Right' });
+      }
+    });
+
+    window.addEventListener('gesture:point', () => {
+      if (state.ws?.isConnected) {
+        state.ws.sendControl({ type: 'gesture', gesture: 'point', confidence: 0.8, handedness: 'Right' });
+      }
+    });
+
+    window.addEventListener('gesture:open_palm', () => {
+      if (state.ws?.isConnected) {
+        state.ws.sendControl({ type: 'gesture', gesture: 'open_palm', confidence: 0.8, handedness: 'Right' });
+      }
+    });
+
+    window.addEventListener('gesture:love', () => {
+      if (state.ws?.isConnected) {
+        state.ws.sendControl({ type: 'gesture', gesture: 'love', confidence: 0.8, handedness: 'Right' });
+      }
+    });
 
 // App State
 interface AppState {

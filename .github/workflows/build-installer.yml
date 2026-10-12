@@ -139,8 +139,14 @@ jobs:
           AZURE_CERT_NAME: ${{ secrets.AZURE_CERT_NAME }}
       
       # Alternative: Sign with local cert (for self-hosted runners with PFX)
+      - name: Set local cert env
+        if: runner.os == 'Windows' && env.AZURE_KEY_VAULT == ''
+        run: |
+          echo "CODE_SIGN_CERT=${{ secrets.CODE_SIGN_CERT }}" >> $env:GITHUB_ENV
+          echo "CODE_SIGN_PASSWORD=${{ secrets.CODE_SIGN_PASSWORD }}" >> $env:GITHUB_ENV
+
       - name: Sign with local certificate (self-hosted)
-        if: runner.os == 'Windows' && env.AZURE_KEY_VAULT == '' && secrets.CODE_SIGN_CERT != ''
+        if: runner.os == 'Windows' && env.AZURE_KEY_VAULT == '' && env.CODE_SIGN_CERT != ''
         id: sign_local
         run: |
           $ver = "${{ steps.version.outputs.version }}"
@@ -148,13 +154,13 @@ jobs:
           $signed = "dist\setup_jarvis_v$ver-signed.exe"
           
           # Salva certificado do secret
-          $certBytes = [Convert]::FromBase64String("${{ secrets.CODE_SIGN_CERT }}")
+          $certBytes = [Convert]::FromBase64String("${{ env.CODE_SIGN_CERT }}")
           $certPath = "$env:TEMP\codesign.pfx"
           [IO.File]::WriteAllBytes($certPath, $certBytes)
           
           signtool sign `
             /f $certPath `
-            /p "${{ secrets.CODE_SIGN_PASSWORD }}" `
+            /p "${{ env.CODE_SIGN_PASSWORD }}" `
             /tr "http://timestamp.sectigo.com" `
             /td SHA256 /fd SHA256 /v `
             $exe

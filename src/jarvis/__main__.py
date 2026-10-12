@@ -1,8 +1,16 @@
 from __future__ import annotations
 
-import asyncio
+import warnings
 import signal
 import sys
+from contextlib import asynccontextmanager
+
+# Reset warnings to remove the 'ignore Warning' filter added by dataclasses/packaging imports
+warnings.resetwarnings()
+# Ensure UserWarning is always shown (for SSL verify=False warning, etc.)
+warnings.filterwarnings('always', category=UserWarning)
+
+import asyncio
 from contextlib import asynccontextmanager
 
 import uvicorn

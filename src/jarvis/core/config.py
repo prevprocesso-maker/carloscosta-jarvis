@@ -38,6 +38,15 @@ DEFAULT_CONFIG = {
             "vad_threshold": 0.09,
             "sample_rate": 16000,
             "chunk_size": 1024,
+            "gesture": {
+                "enabled": True,
+                "camera_index": 0,
+                "resolution": [1280, 720],
+                "min_detection_confidence": 0.5,
+                "min_tracking_confidence": 0.5,
+                "gesture_cooldown_ms": 500,
+                "mirror": True,
+            },
         },
         "remote": {
             "enabled": True,
@@ -75,13 +84,13 @@ DEFAULT_CONFIG = {
         "domain": "",
         "letsencrypt_email": "",
     },
-    "logging": {
+"logging": {
         "level": "INFO",
         "rotation": "daily",
         "retention_days": 7,
         "format": "json",
     },
-"knowledge": {
+    "knowledge": {
         "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
         "embedding_device": "auto",
         "chunk_size": 512,
@@ -91,6 +100,13 @@ DEFAULT_CONFIG = {
         "search_limit": 10,
         "hybrid_search": True,
         "rerank": False,
+    },
+    "vault": {
+        "path": "",
+        "api_key": "",
+        "host": "localhost",
+        "port": 27124,
+        "verify_ssl": False,
     },
 }
 

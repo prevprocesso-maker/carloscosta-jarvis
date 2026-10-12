@@ -219,6 +219,10 @@ FERRAMENTAS DISPONÍVEIS:
             text = data.get("text", "")
             await self.gemini_live.send_text(session_id, text)
         
+        elif msg_type == "gesture":
+            # Handle gesture from frontend
+            await self._handle_gesture(session_id, data)
+        
         elif msg_type == "ping":
             # Keepalive
             pass
@@ -269,6 +273,66 @@ FERRAMENTAS DISPONÍVEIS:
             except Exception:
                 pass
 
+    async def _handle_gesture(self, session_id: str, data: dict):
+        """Processa gesto detectado pelo MediaPipe no frontend."""
+        gesture = data.get("gesture")
+        confidence = data.get("confidence", 0)
+        handedness = data.get("handedness", "Right")
+        
+        if not gesture or confidence < 0.7:
+            return
+        
+        context = self.session_mgr.get_or_create("remote", settings.user.name, session_id)
+        
+        # Mapeia gesto para ação
+        gesture_actions = {
+            "fist": "close_panel",
+            "v_sign": "toggle_mic",
+            "thumbs_up": "confirm",
+            "thumbs_down": "cancel",
+            "point": "cursor_follow",
+            "open_palm": "neutral",
+            "love": "special",
+        }
+        
+        action = gesture_actions.get(gesture)
+        if not action:
+            return
+        
+        # Log no transcript
+        if self._on_text_out:
+            await self._on_text_out(f"Gesto detectado: {gesture} ({handedness})")
+        
+        # Executa ação baseada no gesto
+        if action == "close_panel":
+            # Envia comando pro frontend fechar painel
+            for ws in self._active_connections.values():
+                try:
+                    await ws.send_text(json.dumps({
+                        "type": "ui_close_panels"
+                    }))
+                except Exception:
+                    pass
+        
+        elif action == "toggle_mic":
+            # Toggle microfone no frontend
+            for ws in self._active_connections.values():
+                try:
+                    await ws.send_text(json.dumps({
+                        "type": "mic_toggle",
+                        "enabled": False  # Frontend vai alternar
+                    }))
+                except Exception:
+                    pass
+        
+        elif action == "confirm":
+            # Confirma ação pendente se houver
+            context.add_message("system", f"Gesto confirmado: {gesture}")
+        
+        elif action == "cancel":
+            # Cancela ação pendente
+            context.add_message("system", f"Gesto cancelado: {gesture}")
+    
     async def _execute_tool(self, tool_call: ToolCall) -> dict:
         """Executa action via registry."""
         return execute_action(tool_call.name, tool_call.args, self.session_mgr)
