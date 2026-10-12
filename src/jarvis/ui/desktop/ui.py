@@ -46,7 +46,7 @@ from PyQt6.QtWidgets import (
 # codigo da tela continua escrevendo a paleta ORIGINAL (classe C); quem troca
 # e este gancho. A folha original fica guardada no proprio widget para a troca
 # AO VIVO (`MainWindow.aplicar_tema`). Ver a explicacao no tema.py.
-from core import tema as _tema
+from src.jarvis.core import tema as _tema
 
 _SETSS_ORIGINAL = QWidget.setStyleSheet
 _SEM_TEMA = "/*sem-tema*/"
@@ -1325,9 +1325,9 @@ def _translate_log_text(text: str) -> str:
     # CLIENTE EM INGLES (26/09/2026): o caminho e o contrario — tudo para o
     # ingles. Ver core/interface_en.py.
     try:
-        from core.idioma import em_ingles as _em_ingles_log  # noqa: PLC0415
+        from src.jarvis.core.idioma import em_ingles as _em_ingles_log  # noqa: PLC0415
         if _em_ingles_log():
-            from core.interface_en import traduzir_linha  # noqa: PLC0415
+            from src.jarvis.core.interface_en import traduzir_linha  # noqa: PLC0415
             return traduzir_linha(text)
     except Exception:
         pass
@@ -3714,7 +3714,7 @@ class MainWindow(QMainWindow):
         # dele no alto da janela. Sem "bandeira" no config/idioma.json, nada.
         _flag = None
         try:
-            from core.idioma import caminho_da_bandeira  # noqa: PLC0415
+            from src.jarvis.core.idioma import caminho_da_bandeira  # noqa: PLC0415
             _flag = caminho_da_bandeira()
         except Exception:
             _flag = None
@@ -3798,7 +3798,7 @@ class MainWindow(QMainWindow):
         self._clock_lbl.setText(time.strftime("%H:%M:%S"))
         if getattr(self, "_datas_em_ingles", None) is None:
             try:
-                from core.idioma import em_ingles  # noqa: PLC0415
+                from src.jarvis.core.idioma import em_ingles  # noqa: PLC0415
                 self._datas_em_ingles = em_ingles()
             except Exception:
                 self._datas_em_ingles = False
@@ -5177,7 +5177,7 @@ class MainWindow(QMainWindow):
         a diferenca na hora, e um passo a mais so atrapalha.
         """
         try:
-            from core.personas import (PERSONAGENS, PERSONALIDADES,
+            from src.jarvis.core.personas import (PERSONAGENS, PERSONALIDADES,
                                        PERSONAGEM_PADRAO, PERSONALIDADE_PADRAO)
         except Exception as exc:
             casca0 = getattr(self, "_ui", None)
@@ -5411,7 +5411,7 @@ class MainWindow(QMainWindow):
                     w.deleteLater()
             botoes["microfone"].clear()
             try:
-                from core.audio_dispositivos import listar, testar as testar_mic
+                from src.jarvis.core.audio_dispositivos import listar, testar as testar_mic
             except Exception as exc:
                 estado_mic.setText(f"Nao consegui listar: {str(exc)[:70]}")
                 col_mic.addWidget(estado_mic)
@@ -5478,7 +5478,7 @@ class MainWindow(QMainWindow):
 
         botoes["saida"] = {}
         try:
-            from core.audio_dispositivos import listar_saidas
+            from src.jarvis.core.audio_dispositivos import listar_saidas
             saidas = [{"indice": None, "nome": "Padrao do Windows", "api": ""}] + listar_saidas()
         except Exception:
             saidas = [{"indice": None, "nome": "Padrao do Windows", "api": ""}]
@@ -5513,8 +5513,8 @@ class MainWindow(QMainWindow):
         # Grava ao sair do campo, sem botao de salvar — botao e uma coisa a mais
         # para o cliente esquecer de clicar.
         try:
-            from core.dono import CAMPOS as _CAMPOS_DONO, carregar as _dono_carregar
-            from core.dono import salvar as _dono_salvar
+            from src.jarvis.core.dono import CAMPOS as _CAMPOS_DONO, carregar as _dono_carregar
+            from src.jarvis.core.dono import salvar as _dono_salvar
 
             _atual_dono = _dono_carregar()
 
@@ -5667,9 +5667,9 @@ class JarvisUI:
         # Janela em ingles para o cliente do Canada (26/09/2026): botoes,
         # rotulos e o status desenhado passam pelo core/interface_en.py.
         try:
-            from core.idioma import em_ingles as _em_ingles_ui  # noqa: PLC0415
+            from src.jarvis.core.idioma import em_ingles as _em_ingles_ui  # noqa: PLC0415
             if _em_ingles_ui():
-                from core.interface_en import instalar as _instalar_en  # noqa: PLC0415
+                from src.jarvis.core.interface_en import instalar as _instalar_en  # noqa: PLC0415
                 _instalar_en(self._app)
         except Exception as _exc_en:
             print(f"[ui] interface em ingles nao ligou: {_exc_en}")
@@ -5897,3 +5897,16 @@ class JarvisUI:
     def stop_speaking(self):
         if not self.muted:
             self.set_state("LISTENING")
+
+    def close(self):
+        """Close the UI window and quit the application."""
+        try:
+            if self._win:
+                self._win.close()
+        except Exception:
+            pass
+        try:
+            if self._app:
+                self._app.quit()
+        except Exception:
+            pass

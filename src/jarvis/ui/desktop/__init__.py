@@ -1,6 +1,6 @@
 from __future__ import annotations
 
 # UI Desktop: PyQt6
-# Implementação em desktop/main_window.py
+from .ui import JarvisUI
 
-__all__ = []
+__all__ = ["JarvisUI"]

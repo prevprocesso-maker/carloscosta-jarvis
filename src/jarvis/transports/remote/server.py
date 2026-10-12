@@ -57,12 +57,7 @@ class RemoteVoiceServer(Transport):
         )
 
     def _setup_routes(self):
-        # Static files (frontend PWA build)
-        frontend_dist = Path(__file__).resolve().parent / "frontend" / "dist"
-        if frontend_dist.exists():
-            self.app.mount("/assets", StaticFiles(directory=frontend_dist / "assets"), name="assets")
-            self.app.mount("/", StaticFiles(directory=frontend_dist, html=True), name="frontend")
-
+        # Health check (must be before static files mount)
         @self.app.get("/healthz")
         async def healthz():
             return {
@@ -70,11 +65,17 @@ class RemoteVoiceServer(Transport):
                 "service": "jarvis-remote-voice",
                 "version": "2.0.0",
                 "transports": {
-                    "local": settings.transport_local.enabled,
-                    "remote": settings.transport_remote.enabled,
-                    "webhook": settings.transport_webhook.enabled,
+                    "local": settings.transports.local.enabled,
+                    "remote": settings.transports.remote.enabled,
+                    "webhook": settings.transports.webhook.enabled,
                 }
             }
+
+        # Static files (frontend PWA build)
+        frontend_dist = Path(__file__).resolve().parent / "frontend" / "dist"
+        if frontend_dist.exists():
+            self.app.mount("/assets", StaticFiles(directory=frontend_dist / "assets"), name="assets")
+            self.app.mount("/", StaticFiles(directory=frontend_dist, html=True), name="frontend")
 
         @self.app.websocket("/ws/voice")
         async def ws_voice(
@@ -180,7 +181,7 @@ class RemoteVoiceServer(Transport):
 
     def _verify_token(self, token: str) -> bool:
         """Verifica token (suporta header Bearer + query param + cookie)."""
-        expected = settings.transport_remote.token or settings.app.token
+        expected = settings.transports.remote.token or settings.app.token
         return token == expected
 
     def _build_system_prompt(self, context: BrainContext) -> str:
@@ -296,7 +297,7 @@ FERRAMENTAS DISPONÍVEIS:
         await self.gemini_live.start_cleanup_loop()
         
         # Tools serão definidas na primeira conexão WS
-        print(f"[Remote Voice] Servidor pronto na porta {settings.transport_remote.port}")
+        print(f"[Remote Voice] Servidor pronto na porta {settings.transports.remote.port}")
 
     async def stop(self) -> None:
         if self.gemini_live:

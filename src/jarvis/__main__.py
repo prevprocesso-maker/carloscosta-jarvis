@@ -38,13 +38,13 @@ async def lifespan(app):
 
     # Inicia servidor FastAPI (remote transport) em background
     server = None
-    if app._transport_remote and settings.transport_remote.enabled:
+    if app._transport_remote and settings.transports.remote.enabled:
         remote_app = app._transport_remote.get_app()
         if remote_app:
             config = uvicorn.Config(
                 remote_app,
-                host=settings.transport_remote.host,
-                port=settings.transport_remote.port,
+                host=settings.transports.remote.host,
+                port=settings.transports.remote.port,
                 log_level="info",
                 access_log=False,
             )
@@ -52,18 +52,18 @@ async def lifespan(app):
             asyncio.create_task(server.serve())
 
     transports = []
-    if settings.transport_local.enabled:
+    if settings.transports.local.enabled:
         transports.append("Local (Desktop)")
-    if settings.transport_remote.enabled:
-        transports.append(f"Remoto (Web @ :{settings.transport_remote.port})")
+    if settings.transports.remote.enabled:
+        transports.append(f"Remoto (Web @ :{settings.transports.remote.port})")
 
     print(f"\n{'='*60}")
     print(f"  JARVIS v{__import__('jarvis').__version__} - Ativo")
     print(f"  Usuário: {settings.user.name}")
     print(f"  Transportes: {', '.join(transports) or 'Nenhum'}")
-    if settings.transport_remote.enabled:
-        print(f"  Web UI: http://{settings.transport_remote.host}:{settings.transport_remote.port}")
-        print(f"  WebSocket: ws://{settings.transport_remote.host}:{settings.transport_remote.port}/ws/voice")
+    if settings.transports.remote.enabled:
+        print(f"  Web UI: http://{settings.transports.remote.host}:{settings.transports.remote.port}")
+        print(f"  WebSocket: ws://{settings.transports.remote.host}:{settings.transports.remote.port}/ws/voice")
     print(f"  Diga 'JARVIS' ou acesse a Web UI")
     print(f"{'='*60}\n")
 

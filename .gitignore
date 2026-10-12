@@ -1,43 +1,34 @@
-# Byte-compiled / optimized / DLL files
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
 
 # Virtual environments
 venv/
 env/
-.venv/
 ENV/
+.venv
+venv*/
 
-# Distribution / packaging
-dist/
-build/
-*.egg-info/
-*.egg
-
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
-
-# Unit test / coverage reports
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-pytest-cache/
-.pytest_cache/
-
-# Type checking
-.mypy_cache/
-.dmypy.json
-dmypy.json
-
-# Ruff
-.ruff_cache/
-
-# IDEs
+# IDE
 .vscode/
 .idea/
 *.swp
@@ -48,52 +39,70 @@ dmypy.json
 .DS_Store
 Thumbs.db
 
-# Project specific
-config/api_keys.json
-config/settings.yaml
-memory/long_term.json
-logs/
-*.log
-voice_session.log
-uploads/
-data/
-*.sqlite
-*.db
-
-# WhatsApp Bridge
-whatsapp_bridge/auth/
-whatsapp_bridge/media/
-whatsapp_bridge/*.log
-whatsapp_bridge/*.json
-whatsapp_bridge/node_modules/
-
-# Frontend
-src/jarvis/transports/remote/frontend/node_modules/
-src/jarvis/transports/remote/frontend/dist/
-
-# Models (large files - use Git LFS)
-models/*.task
-models/whisper-*/
-
-# Build artifacts
-*.exe
-*.msi
-*.dmg
-*.app
-*.AppImage
-dist/
-build/
-
-# Docker
-.docker/
-
-# Environment
+# Environment & Secrets
 .env
 .env.local
 .env.*.local
+config.yaml
+config/*.yaml
+secrets.yaml
+*.key
+*.pem
+*.crt
 
-# Temporary
-tmp/
-temp/
+# Logs
+logs/
+*.log
+*.log.*
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Model weights
+*.bin
+*.safetensors
+*.onnx
+*.pt
+*.pth
+
+# Build artifacts
+dist/
+build/
+*.exe
+*.msi
+*.dmg
+
+# Testing
+.coverage
+.pytest_cache/
+.tox/
+htmlcov/
+
+# JARVIS specific
+data/
+updates/
+*.brainpack
+*.whisper
+*.model
+
+# IDE specific
+.vscode/settings.json
+.idea/workspace.xml
+
+# Local config overrides
+config/config.yaml
+config/secrets.yaml
+
+# Node.js (for frontend)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Temporary files
 *.tmp
 *.temp
+tmp/
+temp/

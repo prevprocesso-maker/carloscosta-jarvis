@@ -3,145 +3,281 @@ from __future__ import annotations
 import os
 import yaml
 from pathlib import Path
-from typing import Optional
-from pydantic import Field
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from typing import Any, Dict, Optional
+from copy import deepcopy
+
+from .version import VersionInfo, parse_version, CURRENT_VERSION, CURRENT_CHANNEL
 
 
-class GeminiSettings(BaseSettings):
-    api_key: str = ""
-    fast_model: str = "gemini-3.5-flash-lite"
-    fast_fallback_model: str = "gemini-3.1-flash-lite"
-    reserve_model: str = "gemini-2.5-flash"
-    live_model: str = "gemini-2.5-flash-native-audio-preview"
-    live_voice: str = "Charon"
-    live_fallback_voices: list[str] = ["Puck", "Zephyr", "Kore"]
+DEFAULT_CONFIG = {
+    "app": {
+        "name": "jarvis",
+        "version": CURRENT_VERSION,
+        "channel": "nightly",
+        "install_date": None,
+        "install_id": None,
+    },
+    "user": {
+        "name": "Raphael",
+        "language": "pt-BR",
+        "timezone": "America/Sao_Paulo",
+    },
+    "gemini": {
+        "api_key": "",
+        "fast_model": "gemini-3.5-flash-lite",
+        "fast_fallback_model": "gemini-3.1-flash-lite",
+        "reserve_model": "gemini-2.5-flash",
+        "live_model": "gemini-2.5-flash-native-audio-preview",
+        "live_voice": "Charon",
+    },
+    "transports": {
+        "local": {
+            "enabled": True,
+            "whisper_model": "large-v3",
+            "whisper_device": "auto",
+            "vad_threshold": 0.09,
+            "sample_rate": 16000,
+            "chunk_size": 1024,
+        },
+        "remote": {
+            "enabled": True,
+            "host": "0.0.0.0",
+            "port": 8000,
+            "token": "",
+            "tls": {
+                "enabled": False,
+                "cert_path": "",
+                "key_path": "",
+            },
+        },
+        "webhook": {
+            "enabled": True,
+            "whatsapp_port": 8765,
+        },
+    },
+    "ui": {
+        "desktop_enabled": True,
+        "web_enabled": True,
+        "theme": "stark",
+    },
+    "update": {
+        "channel": "nightly",
+        "auto_check": True,
+        "auto_apply": False,
+        "check_interval_hours": 6,
+        "backup_retention_days": 30,
+        "rollback_on_health_failure": True,
+        "health_check_timeout_seconds": 30,
+    },
+    "deploy": {
+        "docker_enabled": False,
+        "traefik_enabled": False,
+        "domain": "",
+        "letsencrypt_email": "",
+    },
+    "logging": {
+        "level": "INFO",
+        "rotation": "daily",
+        "retention_days": 7,
+        "format": "json",
+    },
+"knowledge": {
+        "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+        "embedding_device": "auto",
+        "chunk_size": 512,
+        "chunk_overlap": 50,
+        "chunk_strategy": "recursive",
+        "search_threshold": 0.25,
+        "search_limit": 10,
+        "hybrid_search": True,
+        "rerank": False,
+    },
+}
 
 
-class BrainSettings(BaseSettings):
-    fast_timeout_ms: int = 9000
-    reserve_timeout_ms: int = 30000
-    cascade_on: list[str] = ["429", "503", "404", "timeout"]
-    max_tool_rounds: int = 3
-    max_output_tokens_decision: int = 400
-    max_output_tokens_text: int = 8192
-
-
-class TransportLocalSettings(BaseSettings):
-    enabled: bool = True
-    whisper_model: str = "large-v3"
-    whisper_device: str = "auto"
-    vad_threshold: float = 0.09
-    sample_rate: int = 16000
-    chunk_size: int = 640
-
-
-class TransportRemoteSettings(BaseSettings):
-    enabled: bool = True
-    host: str = "0.0.0.0"
-    port: int = 8000
-    max_sessions: int = 10
-    token: str = ""
-
-
-class TransportWebhookSettings(BaseSettings):
-    enabled: bool = True
-    whatsapp_port: int = 8765
-
-
-class UISettings(BaseSettings):
-    desktop_enabled: bool = True
-    web_enabled: bool = True
-    theme: str = "stark"
-
-
-class DeploySettings(BaseSettings):
-    traefik_enabled: bool = False
-    domain: str = ""
-    letsencrypt_email: str = ""
-
-
-class UserSettings(BaseSettings):
-    name: str = "Raphael"
-    language: str = "pt-BR"
-
-
-class AppSettings(BaseSettings):
-    name: str = "jarvis"
-    token: str = ""
-    user: UserSettings = Field(default_factory=UserSettings)
-    gemini: GeminiSettings = Field(default_factory=GeminiSettings)
-    brain: BrainSettings = Field(default_factory=BrainSettings)
-    transport_local: TransportLocalSettings = Field(default_factory=TransportLocalSettings)
-    transport_remote: TransportRemoteSettings = Field(default_factory=TransportRemoteSettings)
-    transport_webhook: TransportWebhookSettings = Field(default_factory=TransportWebhookSettings)
-    ui: UISettings = Field(default_factory=UISettings)
-    deploy: DeploySettings = Field(default_factory=DeploySettings)
-
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        env_nested_delimiter="__",
-        extra="ignore",
-    )
-
-
-def load_config(config_path: Optional[str] = None) -> AppSettings:
-    if config_path and Path(config_path).exists():
+def load_config(config_path: Path) -> Dict[str, Any]:
+    """Carrega configuração do arquivo YAML."""
+    if not config_path.exists():
+        return deepcopy(DEFAULT_CONFIG)
+    
+    try:
         with open(config_path, "r", encoding="utf-8") as f:
-            yaml_data = yaml.safe_load(f) or {}
-        return AppSettings(**yaml_data)
-    return AppSettings()
+            data = yaml.safe_load(f) or {}
+        return merge_configs(DEFAULT_CONFIG, data)
+    except Exception:
+        return deepcopy(DEFAULT_CONFIG)
 
 
-def get_base_dir() -> Path:
-    if getattr(__import__("sys"), "frozen", False):
-        return Path(__import__("sys").executable).parent
-    return Path(__file__).resolve().parent.parent.parent
-
-
-def generate_token() -> str:
-    import secrets
-    return secrets.token_urlsafe(32)
-
-
-def ensure_config_files() -> None:
-    base = get_base_dir()
-    config_dir = base / "config"
-    config_dir.mkdir(parents=True, exist_ok=True)
-
-    settings = load_config()
-    if not settings.app.token:
-        settings.app.token = generate_token()
-        save_config(settings)
-
-
-def save_config(settings: AppSettings) -> None:
-    base = get_base_dir()
-    config_path = base / "config" / "settings.yaml"
+def save_config(config: Dict[str, Any], config_path: Path) -> None:
+    """Salva configuração no arquivo YAML."""
     config_path.parent.mkdir(parents=True, exist_ok=True)
-
-    data = settings.model_dump(exclude_none=True)
     with open(config_path, "w", encoding="utf-8") as f:
-        yaml.dump(data, f, allow_unicode=True, sort_keys=False)
+        yaml.dump(config, f, allow_unicode=True, sort_keys=False, default_flow_style=False)
 
 
-# Global settings instance (lazy loaded)
-_settings: Optional[AppSettings] = None
+def merge_configs(default: Dict, user: Dict) -> Dict:
+    """Merge recursivo de configurações (user sobrescreve default)."""
+    result = deepcopy(default)
+    for key, value in user.items():
+        if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+            result[key] = merge_configs(result[key], value)
+        else:
+            result[key] = value
+    return result
 
 
-def get_settings() -> AppSettings:
-    global _settings
-    if _settings is None:
-        _settings = load_config()
-    return _settings
+def get_config_value(config: Dict, path: str, default: Any = None) -> Any:
+    """Obtém valor aninhado via path (ex: 'gemini.api_key')."""
+    keys = path.split(".")
+    current = config
+    for key in keys:
+        if isinstance(current, dict) and key in current:
+            current = current[key]
+        else:
+            return default
+    return current
 
 
+def set_config_value(config: Dict, path: str, value: Any) -> None:
+    """Define valor aninhado via path."""
+    keys = path.split(".")
+    current = config
+    for key in keys[:-1]:
+        if key not in current or not isinstance(current[key], dict):
+            current[key] = {}
+        current = current[key]
+    current[keys[-1]] = value
+
+
+# MIGRAÇÕES
+# Cada migração recebe config e retorna config migrado
+MIGRATIONS = {}
+
+
+def register_migration(from_version: str):
+    """Decorator para registrar migração."""
+    def decorator(func):
+        MIGRATIONS[from_version] = func
+        return func
+    return decorator
+
+
+@register_migration("1.0.0")
+def migrate_1_0_0(config: Dict) -> Dict:
+    """Migração v1.0.0 -> v2.0.0: Nova estrutura de transports."""
+    # Move configurações antigas para nova estrutura
+    if "stt" in config:
+        config.setdefault("transports", {}).setdefault("local", {})
+        config["transports"]["local"]["whisper_model"] = config["stt"].get("model", "large-v3")
+        del config["stt"]
+    if "tts" in config:
+        config.setdefault("transports", {}).setdefault("local", {})
+        config["transports"]["local"]["tts_engine"] = config["tts"].get("engine", "gemini_live")
+        del config["tts"]
+    if "brain" in config:
+        # Brain config movida para transports.remote ou mantida em brain
+        pass
+    return config
+
+
+@register_migration("2.0.0")
+def migrate_2_0_0(config: Dict) -> Dict:
+    """Migração v2.0.0 -> v2.1.0: Novos campos de update."""
+    config.setdefault("update", {}).setdefault("health_check_timeout_seconds", 30)
+    config.setdefault("update", {}).setdefault("rollback_on_health_failure", True)
+    config.setdefault("deploy", {}).setdefault("traefik_enabled", False)
+    return config
+
+
+def migrate_config(config: Dict, from_version: str, to_version: str = CURRENT_VERSION) -> Dict:
+    """Aplica migrações sequenciais."""
+    from_ver = parse_version(from_version)
+    to_ver = parse_version(to_version)
+    
+    if from_ver >= to_ver:
+        return config
+    
+    # Ordena migrações por versão
+    migrations = sorted(MIGRATIONS.items(), key=lambda x: parse_version(x[0]))
+    
+    for version_str, migration_fn in migrations:
+        ver = parse_version(version_str)
+        if from_ver < ver <= to_ver:
+            config = migration_fn(config)
+    
+    return config
+
+
+def ensure_config_migrated(config_path: Path) -> Dict[str, Any]:
+    """Carrega config e aplica migrações se necessário."""
+    config = load_config(config_path)
+    current_version = config.get("app", {}).get("version", "1.0.0")
+    
+    if current_version != CURRENT_VERSION:
+        print(f"[Config] Migrando configuração de {current_version} para {CURRENT_VERSION}")
+        config = migrate_config(config, current_version, CURRENT_VERSION)
+        config["app"]["version"] = CURRENT_VERSION
+        save_config(config, config_path)
+        print("[Config] Migração concluída")
+    
+    return config
+
+
+def get_settings() -> Dict[str, Any]:
+    """Carrega e retorna as configurações do JARVIS."""
+    from .paths import get_jarvis_paths
+    paths = get_jarvis_paths()
+    return ensure_config_migrated(paths.config_file)
+
+
+class Settings:
+    """Wrapper para acessar configurações como atributos."""
+    
+    def __init__(self, config: Dict[str, Any]):
+        self._config = config
+    
+    def __getattr__(self, name: str) -> Any:
+        if name in self._config:
+            value = self._config[name]
+            if isinstance(value, dict):
+                return Settings(value)
+            return value
+        raise AttributeError(f"'Settings' object has no attribute '{name}'")
+    
+    def __getitem__(self, key: str) -> Any:
+        return self._config[key]
+    
+    def get(self, key: str, default: Any = None) -> Any:
+        return self._config.get(key, default)
+    
+    def __contains__(self, key: str) -> bool:
+        return key in self._config
+    
+    def to_dict(self) -> Dict[str, Any]:
+        return self._config
+
+
+# Global settings instance
+_settings_instance: Optional[Settings] = None
+
+
+def get_settings() -> Settings:
+    """Carrega e retorna as configurações do JARVIS como objeto Settings."""
+    global _settings_instance
+    if _settings_instance is None:
+        from .paths import get_jarvis_paths
+        paths = get_jarvis_paths()
+        config = ensure_config_migrated(paths.config_file)
+        _settings_instance = Settings(config)
+    return _settings_instance
+
+
+# Exports for backward compatibility
 settings = get_settings()
 
 __all__ = [
-    "AppSettings", "load_config", "get_settings", "get_base_dir",
-    "generate_token", "ensure_config_files", "save_config", "settings",
-    "GeminiSettings", "BrainSettings", "TransportLocalSettings",
-    "TransportRemoteSettings", "TransportWebhookSettings",
-    "UISettings", "DeploySettings", "UserSettings",
+    "DEFAULT_CONFIG", "load_config", "save_config", "merge_configs",
+    "get_config_value", "set_config_value", "migrate_config",
+    "ensure_config_migrated", "register_migration",
+    "Settings", "get_settings", "settings",
 ]

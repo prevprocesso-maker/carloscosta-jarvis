@@ -8,7 +8,7 @@ from typing import AsyncIterator, Optional
 from google import genai
 from google.genai import types
 
-from jarvis.core.brain.base import Brain, BrainConfig, BrainContext, BrainResponse, ToolCall
+from .base import Brain, BrainConfig, BrainContext, BrainResponse, ToolCall
 from jarvis.core.memory.manager import MemoryManager
 from jarvis.core.actions.registry import get_openai_schemas, execute_action
 from jarvis.core.config import settings as core_settings
@@ -34,12 +34,19 @@ class FastBrain(Brain):
         self.settings = settings
         self.memory = memory
         self.client = None
-        self._init_client()
-
+        # Don't init client immediately - do it lazily to avoid blocking on dummy keys
+        self._client_initialized = False
+    
     def _init_client(self):
+        if self._client_initialized:
+            return
         api_key = self.settings.gemini.api_key
-        if api_key:
-            self.client = genai.Client(api_key=api_key)
+        if api_key and api_key != "dummy-key-for-testing":
+            try:
+                self.client = genai.Client(api_key=api_key)
+            except Exception:
+                self.client = None
+        self._client_initialized = True
 
     @property
     def config(self) -> BrainConfig:

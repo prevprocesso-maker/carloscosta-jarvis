@@ -6,7 +6,7 @@ from typing import AsyncIterator, Optional
 from google import genai
 from google.genai import types
 
-from jarvis.core.brain.base import Brain, BrainConfig, BrainContext, BrainResponse, ToolCall
+from .base import Brain, BrainConfig, BrainContext, BrainResponse, ToolCall
 from jarvis.core.actions.registry import get_openai_schemas, execute_action
 
 

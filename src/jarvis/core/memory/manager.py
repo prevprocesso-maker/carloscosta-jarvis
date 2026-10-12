@@ -149,3 +149,14 @@ class MemoryManager:
 
 
 store = None  # type: ignore
+
+
+def get_memory_manager(settings=None) -> MemoryManager:
+    """Factory function to get/create the memory manager singleton."""
+    global store
+    if store is None:
+        if settings is None:
+            from src.jarvis.core.config import get_settings
+            settings = get_settings()
+        store = MemoryManager(settings)
+    return store

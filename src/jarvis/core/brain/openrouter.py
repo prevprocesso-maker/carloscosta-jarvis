@@ -5,7 +5,7 @@ import json
 from typing import AsyncIterator, Optional
 import httpx
 
-from jarvis.core.brain.base import Brain, BrainConfig, BrainContext, BrainResponse, ToolCall
+from .base import Brain, BrainConfig, BrainContext, BrainResponse, ToolCall
 from jarvis.core.actions.registry import get_openai_schemas, execute_action
 
 

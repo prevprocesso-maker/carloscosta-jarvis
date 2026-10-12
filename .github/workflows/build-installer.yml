@@ -1,0 +1,244 @@
+name: Build & Sign JARVIS Installer
+
+on:
+  push:
+    tags:
+      - 'v*'           # v2.0.0, v2.0.1, etc.
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version (ex: 2.0.1)'
+        required: true
+        type: string
+      channel:
+        description: 'Release channel'
+        required: false
+        default: 'stable'
+        type: choice
+        options: [stable, beta, nightly]
+
+permissions:
+  contents: write      # para criar release
+  attestations: write  # para SLSA provenance
+  id-token: write      # para OIDC (Azure Key Vault)
+
+env:
+  BRANCH: phase5/desktop-integration
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  build-installer:
+    name: Build & Sign Installer (Windows)
+    runs-on: windows-latest
+    timeout-minutes: 45
+    
+    steps:
+      # ────────────────────────────────────────────────────────────────────────
+      # CHECKOUT
+      # ────────────────────────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ env.BRANCH }}
+      
+      - name: Determine version
+        id: version
+        run: |
+          if ("${{ github.event_name }}" -eq "push") {
+            $tag = "${{ github.ref_name }}"
+            $ver = $tag -replace '^v', ''
+            echo "version=$ver" >> $env:GITHUB_OUTPUT
+          } else {
+            echo "version=${{ github.event.inputs.version }}" >> $env:GITHUB_OUTPUT
+          }
+      
+      # ────────────────────────────────────────────────────────────────────────
+      # SETUP TOOLS
+      # ────────────────────────────────────────────────────────────────────────
+      - name: Install Inno Setup
+        uses: juanpabloajuriaguerra/setup-inno-setup@v1
+        with:
+          version: '6.2.2'
+      
+      - name: Install Python Embedded
+        run: |
+          $pyUrl = "https://www.python.org/ftp/python/3.11.9/python-3.11.9-embed-amd64.zip"
+          $zip = "$env:TEMP\python-embedded.zip"
+          Invoke-WebRequest -Uri $pyUrl -OutFile $zip -UseBasicParsing
+          Expand-Archive -Force -Path $zip -DestinationPath "jarvis_installer\assets\python-embedded"
+          Remove-Item $zip
+          # Habilita site-packages
+          $pth = "jarvis_installer\assets\python-embedded\python311._pth"
+          (Get-Content $pth) -replace '^#import site', 'import site' | Set-Content $pth
+      
+      - name: Download NSSM
+        run: |
+          $nssmUrl = "https://github.com/nssm/nssm/releases/download/v2.24/nssm-2.24.zip"
+          $zip = "$env:TEMP\nssm.zip"
+          Invoke-WebRequest -Uri $nssmUrl -OutFile $zip -UseBasicParsing
+          Expand-Archive -Force -Path $zip -DestinationPath "$env:TEMP\nssm"
+          $nssmExe = Get-ChildItem "$env:TEMP\nssm\nssm-2.24\win64\nssm.exe" -ea 0
+          if($nssmExe){ Copy-Item $nssmExe.FullName "jarvis_installer\assets\nssm.exe" -Force }
+          Remove-Item $zip -Force; Remove-Item "$env:TEMP\nssm" -Recurse -Force
+      
+      # ────────────────────────────────────────────────────────────────────────
+      # BUILD INSTALLER (Inno Setup)
+      # ────────────────────────────────────────────────────────────────────────
+      - name: Compile Inno Setup
+        id: compile
+        run: |
+          $ver = "${{ steps.version.outputs.version }}"
+          iscc `
+            /Odist `
+            /Fsetup_jarvis_v$ver `
+            /DAppVersion=$ver `
+            /DBranch=${{ env.BRANCH }} `
+            jarvis_installer/scripts/jarvis.iss
+        shell: pwsh
+      
+      - name: Verify installer created
+        run: |
+          $ver = "${{ steps.version.outputs.version }}"
+          $exe = "dist\setup_jarvis_v$ver.exe"
+          if (-not (Test-Path $exe)) { exit 1 }
+          $size = (Get-Item $exe).Length / 1MB
+          echo "installer=$exe" >> $env:GITHUB_OUTPUT
+          echo "size_mb=$([math]::Round($size,1))" >> $env:GITHUB_OUTPUT
+      
+      # ────────────────────────────────────────────────────────────────────────
+      # CODE SIGNING (Azure Key Vault / OIDC)
+      # ────────────────────────────────────────────────────────────────────────
+      - name: Azure Login (OIDC)
+        if: env.AZURE_KEY_VAULT != ''
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          allow-no-subscriptions: true
+      
+      - name: Sign with Azure Key Vault
+        if: env.AZURE_KEY_VAULT != ''
+        id: sign
+        run: |
+          $ver = "${{ steps.version.outputs.version }}"
+          $exe = "dist\setup_jarvis_v$ver.exe"
+          $signed = "dist\setup_jarvis_v$ver-signed.exe"
+          
+          az keyvault certificate sign `
+            --vault-name ${{ secrets.AZURE_KEY_VAULT }} `
+            --name ${{ secrets.AZURE_CERT_NAME }} `
+            --algorithm SHA256 `
+            --file $exe `
+            --output-file $signed
+          
+          echo "signed=$signed" >> $env:GITHUB_OUTPUT
+        env:
+          AZURE_KEY_VAULT: ${{ secrets.AZURE_KEY_VAULT }}
+          AZURE_CERT_NAME: ${{ secrets.AZURE_CERT_NAME }}
+      
+      # Alternative: Sign with local cert (for self-hosted runners with PFX)
+      - name: Sign with local certificate (self-hosted)
+        if: runner.os == 'Windows' && env.AZURE_KEY_VAULT == '' && secrets.CODE_SIGN_CERT != ''
+        id: sign_local
+        run: |
+          $ver = "${{ steps.version.outputs.version }}"
+          $exe = "dist\setup_jarvis_v$ver.exe"
+          $signed = "dist\setup_jarvis_v$ver-signed.exe"
+          
+          # Salva certificado do secret
+          $certBytes = [Convert]::FromBase64String("${{ secrets.CODE_SIGN_CERT }}")
+          $certPath = "$env:TEMP\codesign.pfx"
+          [IO.File]::WriteAllBytes($certPath, $certBytes)
+          
+          signtool sign `
+            /f $certPath `
+            /p "${{ secrets.CODE_SIGN_PASSWORD }}" `
+            /tr "http://timestamp.sectigo.com" `
+            /td SHA256 /fd SHA256 /v `
+            $exe
+          
+          Copy-Item $exe $signed -Force
+          Remove-Item $certPath -Force
+          
+          echo "signed=$signed" >> $env:GITHUB_OUTPUT
+      
+      # ────────────────────────────────────────────────────────────────────────
+      # VERIFY SIGNATURE
+      # ────────────────────────────────────────────────────────────────────────
+      - name: Verify signature
+        if: steps.sign.outputs.signed != '' || steps.sign_local.outputs.signed != ''
+        run: |
+          $signed = "${{ steps.sign.outputs.signed }}${steps.sign_local.outputs.signed}"
+          signtool verify /pa /v $signed
+      
+      # ────────────────────────────────────────────────────────────────────────
+      # GENERATE SHA256
+      # ────────────────────────────────────────────────────────────────────────
+      - name: Generate SHA256
+        id: hash
+        run: |
+          $ver = "${{ steps.version.outputs.version }}"
+          $signed = "${{ steps.sign.outputs.signed }}${steps.sign_local.outputs.signed}"
+          if (-not $signed) { $signed = "dist\setup_jarvis_v$ver.exe" }
+          
+          $hash = (Get-FileHash -Algorithm SHA256 $signed).Hash
+          echo "$hash  setup_jarvis_v$ver-signed.exe" > "dist\setup_jarvis_v$ver-signed.exe.sha256"
+          echo "hash=$hash" >> $env:GITHUB_OUTPUT
+          echo "sha256_file=dist\setup_jarvis_v$ver-signed.exe.sha256" >> $env:GITHUB_OUTPUT
+      
+      # ────────────────────────────────────────────────────────────────────────
+      # CREATE RELEASE
+      # ────────────────────────────────────────────────────────────────────────
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: JARVIS CyberBot v${{ steps.version.outputs.version }}
+          body: |
+            ## JARVIS CyberBot v${{ steps.version.outputs.version }}
+            
+            ### 📦 Instalador
+            - **setup_jarvis_v${{ steps.version.outputs.version }}-signed.exe** (${{ steps.compile.outputs.size_mb }} MB)
+            - SHA256: ${{ steps.hash.outputs.hash }}
+            
+            ### ✨ Novidades
+            - UI PyQt6 integrada (desktop + web)
+            - Transportes: Local (Whisper+VAD+Gemini TTS) + Remoto (FastAPI+WebSocket+Gemini Live)
+            - WhatsApp Bridge (Baileys)
+            - Serviço Windows (NSSM) + Auto-update diário
+            - Code Signing (Authenticode)
+            
+            ### 🔐 Verificação
+            ```powershell
+            # Verifica assinatura
+            signtool verify /pa setup_jarvis_v${{ steps.version.outputs.version }}-signed.exe
+            
+            # Verifica hash
+            Get-FileHash -Algorithm SHA256 setup_jarvis_v${{ steps.version.outputs.version }}-signed.exe
+            ```
+            
+            ### 📋 Instalação
+            1. Baixe o `.exe`
+            2. Rode como Administrador
+            3. Configure Gemini API Key na UI (engrenagem → API Keys)
+            
+            ---
+            *Build: ${{ github.sha }} | Channel: ${{ github.event.inputs.channel || 'stable' }}*
+          files: |
+            dist/setup_jarvis_v${{ steps.version.outputs.version }}-signed.exe
+            dist/setup_jarvis_v${{ steps.version.outputs.version }}-signed.exe.sha256
+          draft: false
+          prerelease: ${{ github.event.inputs.channel == 'beta' || github.event.inputs.channel == 'nightly' }}
+      
+      # ────────────────────────────────────────────────────────────────────────
+      # SLSA PROVENANCE
+      # ────────────────────────────────────────────────────────────────────────
+      - name: Generate SLSA Provenance
+        uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v1.9.0
+        if: github.event_name == 'push'
+        with:
+          base64-subjects: "${{ steps.compile.outputs.installer }}"
+          provenance-name: setup_jarvis.intoto.jsonl

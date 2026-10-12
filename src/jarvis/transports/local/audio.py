@@ -18,7 +18,13 @@ from jarvis.core.config import settings
 class WhisperSTT:
     """Wrapper do faster-whisper com auto device detection."""
 
-    def __init__(self, model_name: str = "large-v3", device: str = "auto", language: str = "pt"):
+    def __init__(self, model_name: str = "large-v3", device: str = "auto", language: str = "pt", test_mode: bool = False):
+        if test_mode:
+            self._model = None
+            self._language = language if language != "auto" else None
+            print(f"[STT] Modo de teste - modelo Whisper não carregado")
+            return
+
         from faster_whisper import WhisperModel
         import torch
 
@@ -38,6 +44,8 @@ class WhisperSTT:
 
     def transcribe(self, audio: np.ndarray) -> str:
         """Transcreve array float32 mono 16kHz."""
+        if self._model is None:
+            return ""
         segments, _ = self._model.transcribe(
             audio,
             language=self._language,
@@ -86,15 +94,22 @@ class LocalVAD:
 class GeminiLiveTTS:
     """Streaming TTS via Gemini Live API (reutiliza sessão persistente)."""
 
-    def __init__(self, api_key: str, voice: str = "Charon", model: str = "gemini-2.5-flash-native-audio-preview"):
-        from google import genai
-        from google.genai import types
-
-        self.client = genai.Client(api_key=api_key)
+    def __init__(self, api_key: str, voice: str = "Charon", model: str = "gemini-2.5-flash-native-audio-preview", test_mode: bool = False):
+        self._test_mode = test_mode
         self.voice = voice
         self.model = model
         self._session = None
         self._lock = asyncio.Lock()
+        
+        if test_mode or not api_key or api_key == "dummy-key-for-testing":
+            self.client = None
+            print("[TTS] Modo de teste - cliente Gemini não criado")
+            return
+            
+        from google import genai
+        from google.genai import types
+
+        self.client = genai.Client(api_key=api_key)
         self._config = types.LiveConnectConfig(
             response_modalities=["AUDIO"],
             speech_config=types.SpeechConfig(
@@ -137,15 +152,16 @@ class GeminiLiveTTS:
 class LocalAudioTransport(Transport):
     """Transport local: Mic → Whisper → Brain → Gemini TTS → Speaker."""
 
-    def __init__(self, brain, session_mgr):
+    def __init__(self, brain, session_mgr, test_mode: bool = False):
         self.brain = brain
         self.session_mgr = session_mgr
+        self._test_mode = test_mode
 
         # Config
-        self.sample_rate = settings.transport_local.sample_rate
-        self.chunk_size = settings.transport_local.chunk_size
-        self.whisper_model = settings.transport_local.whisper_model
-        self.whisper_device = settings.transport_local.whisper_device
+        self.sample_rate = settings.transports.local.sample_rate
+        self.chunk_size = settings.transports.local.chunk_size
+        self.whisper_model = settings.transports.local.whisper_model
+        self.whisper_device = settings.transports.local.whisper_device
 
         # Componentes
         self.stt: Optional[WhisperSTT] = None
@@ -179,25 +195,30 @@ class LocalAudioTransport(Transport):
             model_name=self.whisper_model,
             device=self.whisper_device,
             language="pt",
+            test_mode=self._test_mode,
         )
         self.vad = LocalVAD(
-            initial_threshold=settings.transport_local.vad_threshold,
+            initial_threshold=settings.transports.local.vad_threshold,
             sample_rate=self.sample_rate,
         )
         self.tts = GeminiLiveTTS(
             api_key=settings.gemini.api_key,
             voice=settings.gemini.live_voice,
+            test_mode=self._test_mode,
         )
 
-        # Stream de captura
-        self._stream = sd.InputStream(
-            samplerate=self.sample_rate,
-            channels=1,
-            dtype="float32",
-            blocksize=self.chunk_size,
-            callback=self._audio_callback,
-        )
-        self._stream.start()
+        if not self._test_mode:
+            # Stream de captura (apenas se não estiver em modo de teste)
+            self._stream = sd.InputStream(
+                samplerate=self.sample_rate,
+                channels=1,
+                dtype="float32",
+                blocksize=self.chunk_size,
+                callback=self._audio_callback,
+            )
+            self._stream.start()
+        else:
+            print("[Transport Local] Modo de teste - microfone desativado")
 
         self._running = True
         self._process_task = asyncio.create_task(self._process_loop())
