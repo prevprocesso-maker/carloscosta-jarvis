@@ -78,7 +78,7 @@ def _patch_os_startfile() -> None:
     if _platform.system() != "Windows":
         import os as _os_para_remendar
         if not hasattr(_os_para_remendar, "startfile"):
-            from src.jarvis.core.plataforma import abrir_no_sistema as _abrir_no_sistema
+            from jarvis.core.plataforma import abrir_no_sistema as _abrir_no_sistema
             _os_para_remendar.startfile = lambda caminho, *a, **k: _abrir_no_sistema(caminho)
 
 
@@ -102,8 +102,8 @@ def initialize_bootstrap() -> None:
 
 def ensure_config_files() -> None:
     """Garante que os arquivos de configuração existam."""
-    from src.jarvis.core.paths import get_jarvis_paths
-    from src.jarvis.core.config import ensure_config_migrated
+    from jarvis.core.paths import get_jarvis_paths
+    from jarvis.core.config import ensure_config_migrated
     
     paths = get_jarvis_paths()
     ensure_config_migrated(paths.config_file)
@@ -111,7 +111,7 @@ def ensure_config_files() -> None:
 
 def create_application(config_path: str = None):
     """Cria a aplicação JARVIS."""
-    from src.jarvis.orchestrator import JarvisOrchestrator
+    from jarvis.orchestrator import JarvisOrchestrator
     
     # Ensure config files exist
     ensure_config_files()

@@ -45,7 +45,7 @@ class BrainFactory:
 def get_brain_factory(settings=None, memory=None):
     """Factory function to create a BrainFactory instance."""
     if settings is None:
-        from src.jarvis.core.config import get_settings
+        from jarvis.core.config import get_settings
         settings = get_settings()
     return BrainFactory(settings, memory)
 

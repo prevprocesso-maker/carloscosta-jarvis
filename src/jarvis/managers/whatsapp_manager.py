@@ -6,9 +6,9 @@ import asyncio
 from pathlib import Path
 from typing import Optional
 
-from src.jarvis.core.config import settings
-from src.jarvis.core.telemetry import get_telemetry
-from src.jarvis.core.plataforma import get_base_dir
+from jarvis.core.config import settings
+from jarvis.core.telemetry import get_telemetry
+from jarvis.core.plataforma import get_base_dir
 
 
 class WhatsAppManager:
@@ -26,7 +26,7 @@ class WhatsAppManager:
             return
 
         try:
-            from src.jarvis.integrations import start_whatsapp_bridge
+            from jarvis.integrations import start_whatsapp_bridge
             bridge_dir = get_base_dir() / "whatsapp_bridge"
             self._whatsapp_bridge = await start_whatsapp_bridge(
                 port=self.settings.transports.webhook.whatsapp_port,
@@ -81,7 +81,7 @@ class WhatsAppManager:
 
         # Send response back via WhatsApp
         if self._whatsapp_bridge and self._whatsapp_bridge.is_connected:
-            from src.jarvis.core.brain import get_brain_factory
+            from jarvis.core.brain import get_brain_factory
             brain = self._get_brain_factory().get_fast_brain()
             session = self.orchestrator.session_manager.get_or_create("whatsapp", from_number, from_number)
             session.add_message("user", cmd)
@@ -94,9 +94,9 @@ class WhatsAppManager:
 
     def _get_brain_factory(self):
         if self._brain_factory is None:
-            from src.jarvis.core.brain import get_brain_factory
-            from src.jarvis.core.config import settings
-            from src.jarvis.core.memory import get_memory_manager
+            from jarvis.core.brain import get_brain_factory
+            from jarvis.core.config import settings
+            from jarvis.core.memory import get_memory_manager
             self._brain_factory = get_brain_factory(settings, get_memory_manager())
         return self._brain_factory
 

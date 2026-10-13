@@ -22,7 +22,7 @@ from jarvis.core.config import settings
 @asynccontextmanager
 async def lifespan(app):
     # Inicializa brains
-    app.initialize_brains()
+    await app.initialize_brains()
 
     # Callbacks para output
     async def on_audio_out(chunk: bytes):
@@ -111,6 +111,11 @@ async def main():
 
     async with lifespan(app):
         await shutdown_event.wait()
+
+
+def main_entry():
+    """Synchronous entry point for setuptools console script."""
+    asyncio.run(main())
 
 
 if __name__ == "__main__":

@@ -41,14 +41,14 @@ class HealthChecker:
     """Sistema completo de health checks para JARVIS."""
     
     def __init__(self):
-        from src.jarvis.core.telemetry import get_telemetry
-        from src.jarvis.core.plataforma import get_jarvis_paths
+        from jarvis.core.telemetry import get_telemetry
+        from jarvis.core.plataforma import get_jarvis_paths
         self.telemetry = get_telemetry()
         self.paths = get_jarvis_paths()
     
     def _get_settings(self):
         """Lazy import to avoid circular imports."""
-        from src.jarvis.core.config import settings
+        from jarvis.core.config import settings
         return settings
     
     async def run_all_checks(self) -> Dict[str, Any]:
@@ -157,13 +157,13 @@ class HealthChecker:
     async def check_vault_connection(self):
         """Verifica conexão com Vault/Obsidian."""
         try:
-            from src.jarvis.integrations import create_vault_manager
+            from jarvis.integrations import create_vault_manager
             from pathlib import Path
             
             settings = self._get_settings()
             vault_path = getattr(settings, 'vault_path', None)
             if not vault_path:
-                from src.jarvis.core.plataforma import get_jarvis_paths
+                from jarvis.core.plataforma import get_jarvis_paths
                 paths = get_jarvis_paths()
                 vault_path = paths.data / "vault"
             else:
@@ -240,7 +240,7 @@ class HealthChecker:
     async def check_config_files(self):
         """Verifica arquivos de configuração essenciais."""
         try:
-            from src.jarvis.core.plataforma import get_jarvis_paths
+            from jarvis.core.plataforma import get_jarvis_paths
             paths = get_jarvis_paths()
             required_files = [
                 paths.config_file,
@@ -261,7 +261,7 @@ class HealthChecker:
     async def check_permissions(self):
         """Verifica permissões de escrita."""
         try:
-            from src.jarvis.core.plataforma import get_jarvis_paths
+            from jarvis.core.plataforma import get_jarvis_paths
             paths = get_jarvis_paths()
             test_file = paths.logs / "permission_test.tmp"
             test_file.write_text("test")
@@ -312,5 +312,5 @@ class HealthChecker:
     
     def _get_settings(self):
         """Lazy import to avoid circular imports."""
-        from src.jarvis.core.config import settings
+        from jarvis.core.config import settings
         return settings

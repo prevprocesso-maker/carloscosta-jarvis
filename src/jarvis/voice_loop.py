@@ -8,9 +8,9 @@ import sounddevice as sd
 from pathlib import Path
 from typing import Optional
 
-from src.jarvis.core.voice import GeminiLiveTTS
-from src.jarvis.core.telemetry import get_telemetry
-from src.jarvis.orchestrator import JarvisOrchestrator
+from jarvis.core.voice import GeminiLiveTTS
+from jarvis.core.telemetry import get_telemetry
+from jarvis.orchestrator import JarvisOrchestrator
 
 
 class VoiceLoop:

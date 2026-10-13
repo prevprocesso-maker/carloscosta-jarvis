@@ -251,7 +251,7 @@ async def get_whatsapp_bridge(bridge_dir: Optional[Path] = None) -> WhatsAppBrid
     global _bridge_manager
     if _bridge_manager is None:
         if bridge_dir is None:
-            from src.jarvis.core.plataforma import get_base_dir
+            from jarvis.core.plataforma import get_base_dir
             bridge_dir = get_base_dir() / "whatsapp_bridge"
         _bridge_manager = WhatsAppBridgeManager(bridge_dir)
     return _bridge_manager

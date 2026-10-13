@@ -9,18 +9,19 @@ from contextlib import asynccontextmanager
 
 import uvicorn
 
-from src.jarvis.bootstrap import create_application, ensure_config_files
-from src.jarvis.core.config import settings
-from src.jarvis.core.telemetry import get_telemetry, init_telemetry
-from src.jarvis.core.guardrails import get_guardrails, init_guardrails
-from src.jarvis.core.knowledge import get_knowledge_base, init_knowledge_base
-from src.jarvis.core.session import SessionManager
-from src.jarvis.core.actions.registry import get_openai_schemas, execute_action
-from src.jarvis.core.memory import get_memory_manager
-from src.jarvis.core.plataforma import get_base_dir
+from jarvis.bootstrap import create_application, ensure_config_files
+from jarvis.core.config import settings
+from jarvis.core.telemetry import get_telemetry, init_telemetry
+from jarvis.core.guardrails import get_guardrails, init_guardrails
+from jarvis.core.knowledge import get_knowledge_base, init_knowledge_base
+from jarvis.core.session import SessionManager
+from jarvis.core.actions.registry import get_openai_schemas, execute_action
+from jarvis.core.memory import get_memory_manager
+from jarvis.core.plataforma import get_base_dir
+from jarvis.core.brain import get_brain_factory
 
-from src.jarvis.ui import JarvisUI
-from src.jarvis.managers import (
+from jarvis.ui import JarvisUI
+from jarvis.managers import (
     VoiceLoopManager,
     TransportManager,
     VaultManager,
@@ -73,7 +74,7 @@ class JarvisOrchestrator:
     def brain_factory(self):
         """Lazy load brain factory to avoid circular imports."""
         if self._brain_factory is None:
-            from src.jarvis.core.brain import get_brain_factory
+            from jarvis.core.brain import get_brain_factory
             self._brain_factory = get_brain_factory(self.settings, self.memory_manager)
         return self._brain_factory
 
@@ -130,6 +131,12 @@ class JarvisOrchestrator:
         if self._auto_updater is None:
             self._auto_updater = AutoUpdater(self)
         return self._auto_updater
+
+    async def initialize_brains(self):
+        """Initialize just the brain factory (for backward compatibility)."""
+        self._brain_factory = get_brain_factory(self.settings, self.memory_manager)
+        self._brain_factory.initialize_brains()
+        print("[JARVIS] Cerebros inicializados")
 
     async def initialize(self):
         """Initialize all core components."""

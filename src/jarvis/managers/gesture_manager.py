@@ -5,9 +5,9 @@ from __future__ import annotations
 import asyncio
 from typing import Optional, List, Dict
 
-from src.jarvis.core.telemetry import get_telemetry
-from src.jarvis.transports.local import create_local_gesture_bridge, LocalGestureResult
-from src.jarvis.core.config import settings
+from jarvis.core.telemetry import get_telemetry
+from jarvis.transports.local import create_local_gesture_bridge, LocalGestureResult
+from jarvis.core.config import settings
 
 
 class GestureManager:
@@ -26,7 +26,7 @@ class GestureManager:
 
         try:
             gesture_cfg = settings.transports.local.gesture.to_dict() if hasattr(settings.transports.local, 'gesture') else {}
-            from src.jarvis.transports.local import create_local_gesture_bridge
+            from jarvis.transports.local import create_local_gesture_bridge
             self._bridge = await create_local_gesture_bridge(gesture_config=gesture_cfg)
             self._bridge.set_orchestrator(self)
             await self._bridge.start()

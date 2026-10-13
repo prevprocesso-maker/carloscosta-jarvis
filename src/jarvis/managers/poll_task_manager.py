@@ -6,8 +6,8 @@ import asyncio
 import psutil
 from typing import Optional, Callable, Awaitable
 
-from src.jarvis.core.telemetry import get_telemetry
-from src.jarvis.core.config import settings
+from jarvis.core.telemetry import get_telemetry
+from jarvis.core.config import settings
 
 
 class PollTaskManager:

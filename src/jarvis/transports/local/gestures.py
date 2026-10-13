@@ -482,7 +482,7 @@ async def create_local_gesture_bridge(
     """Factory para criar e iniciar bridge de gestos local."""
     if gesture_config is None:
         try:
-            from src.jarvis.core.config import settings
+            from jarvis.core.config import settings
             gesture_config = settings.transports.local.gesture.to_dict() if hasattr(settings.transports.local, 'gesture') else {}
         except Exception:
             gesture_config = {}

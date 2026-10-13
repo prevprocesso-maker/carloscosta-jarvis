@@ -156,7 +156,7 @@ def get_memory_manager(settings=None) -> MemoryManager:
     global store
     if store is None:
         if settings is None:
-            from src.jarvis.core.config import get_settings
+            from jarvis.core.config import get_settings
             settings = get_settings()
         store = MemoryManager(settings)
     return store

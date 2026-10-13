@@ -6,9 +6,9 @@ import asyncio
 from pathlib import Path
 from typing import Optional, Callable, Tuple
 
-from src.jarvis.core.config import settings
-from src.jarvis.core.telemetry import get_telemetry
-from src.jarvis.core.plataforma import get_base_dir
+from jarvis.core.config import settings
+from jarvis.core.telemetry import get_telemetry
+from jarvis.core.plataforma import get_base_dir
 
 
 class UIManager:
@@ -31,7 +31,7 @@ class UIManager:
         base_dir = get_base_dir()
         self._face_path = str(base_dir / "assets" / "jarvis_face.png")
 
-        from src.jarvis.ui import JarvisUI
+        from jarvis.ui import JarvisUI
         self.ui = JarvisUI(face_path=self._face_path)
         # Store reference for backward compatibility
         self.ui.app = self.ui._app

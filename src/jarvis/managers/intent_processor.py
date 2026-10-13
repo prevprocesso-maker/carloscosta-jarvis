@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from typing import Optional
 
-from src.jarvis.core.telemetry import get_telemetry
-from src.jarvis.integrations import IntentClassifier, Intent, IntentType
-from src.jarvis.integrations import VaultRouter
+from jarvis.core.telemetry import get_telemetry
+from jarvis.integrations import IntentClassifier, Intent, IntentType
+from jarvis.integrations import VaultRouter
 
 
 class IntentProcessor:

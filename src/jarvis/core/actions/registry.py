@@ -194,7 +194,7 @@ def register_opensquad_skills(opensquad_schemas: list[dict]) -> int:
             
         # Cria função wrapper que executa a skill via OpenSquad bridge
         async def make_skill_func(skill_name: str, **kwargs):
-            from src.jarvis.integrations import execute_opensquad_skill
+            from jarvis.integrations import execute_opensquad_skill
             return await execute_opensquad_skill(skill_name, kwargs)
         
         # Registra usando o decorator action

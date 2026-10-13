@@ -6,9 +6,9 @@ import asyncio
 from pathlib import Path
 from typing import Optional
 
-from src.jarvis.core.config import settings
-from src.jarvis.core.telemetry import get_telemetry
-from src.jarvis.integrations import (
+from jarvis.core.config import settings
+from jarvis.core.telemetry import get_telemetry
+from jarvis.integrations import (
     ObsidianVaultManager,
     VaultRouter,
     IntentClassifier,
@@ -16,7 +16,7 @@ from src.jarvis.integrations import (
     create_vault_manager,
     VaultFileEvent,
 )
-from src.jarvis.core.knowledge import get_knowledge_base
+from jarvis.core.knowledge import get_knowledge_base
 
 
 class VaultManager:
@@ -42,7 +42,7 @@ class VaultManager:
             # Determina caminho do vault
             vault_path = getattr(self.settings, 'vault_path', None)
             if not vault_path:
-                from src.jarvis.core.plataforma import get_jarvis_paths
+                from jarvis.core.plataforma import get_jarvis_paths
                 paths = get_jarvis_paths()
                 vault_path = paths.data / "vault"
             else:

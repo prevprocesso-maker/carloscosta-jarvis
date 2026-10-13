@@ -7,9 +7,9 @@ import os
 from pathlib import Path
 from typing import Optional
 
-from src.jarvis.core.config import settings
-from src.jarvis.core.telemetry import get_telemetry
-from src.jarvis.core.session import SessionManager
+from jarvis.core.config import settings
+from jarvis.core.telemetry import get_telemetry
+from jarvis.core.session import SessionManager
 
 
 class TransportManager:
@@ -108,8 +108,8 @@ class TransportManager:
         # Inicia WhatsApp Bridge
         if self.settings.transports.webhook.enabled:
             try:
-                from src.jarvis.integrations import start_whatsapp_bridge
-                from src.jarvis.core.plataforma import get_base_dir
+                from jarvis.integrations import start_whatsapp_bridge
+                from jarvis.core.plataforma import get_base_dir
                 bridge_dir = get_base_dir() / "whatsapp_bridge"
                 self._whatsapp_bridge = await start_whatsapp_bridge(
                     port=self.settings.transports.webhook.whatsapp_port,

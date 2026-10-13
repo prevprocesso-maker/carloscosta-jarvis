@@ -20,9 +20,9 @@ import httpx
 import psutil
 import packaging.version
 
-from src.jarvis.core.config import settings
-from src.jarvis.core.telemetry import get_telemetry
-from src.jarvis.core.config import get_settings
+from jarvis.core.config import settings
+from jarvis.core.telemetry import get_telemetry
+from jarvis.core.config import get_settings
 
 
 class HealthCheck:
@@ -62,7 +62,7 @@ class AutoUpdater:
     def _get_current_version(self) -> str:
         """Get current version from package or version file."""
         try:
-            from src.jarvis.core.version import CURRENT_VERSION
+            from jarvis.core.version import CURRENT_VERSION
             return CURRENT_VERSION
         except ImportError:
             return "2.0.0-dev"

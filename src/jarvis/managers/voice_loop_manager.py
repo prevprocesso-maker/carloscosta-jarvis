@@ -9,8 +9,8 @@ from typing import Optional
 
 from faster_whisper import WhisperModel
 
-from src.jarvis.core.config import settings
-from src.jarvis.core.telemetry import get_telemetry
+from jarvis.core.config import settings
+from jarvis.core.telemetry import get_telemetry
 
 
 class VoiceLoopManager:
