@@ -3,7 +3,7 @@ name: Build & Sign JARVIS Installer
 on:
   push:
     tags:
-      - 'v*'           # v2.0.0, v2.0.1, etc.
+      - 'v*'
   workflow_dispatch:
     inputs:
       version:
@@ -18,9 +18,9 @@ on:
         options: [stable, beta, nightly]
 
 permissions:
-  contents: write      # para criar release
-  attestations: write  # para SLSA provenance
-  id-token: write      # para OIDC (Azure Key Vault)
+  contents: write
+  attestations: write
+  id-token: write
 
 env:
   BRANCH: phase5/desktop-integration
@@ -74,7 +74,6 @@ jobs:
           Invoke-WebRequest -Uri $pyUrl -OutFile $zip -UseBasicParsing
           Expand-Archive -Force -Path $zip -DestinationPath "jarvis_installer\assets\python-embedded"
           Remove-Item $zip
-          # Habilita site-packages
           $pth = "jarvis_installer\assets\python-embedded\python311._pth"
           (Get-Content $pth) -replace '^#import site', 'import site' | Set-Content $pth
       
@@ -159,7 +158,6 @@ jobs:
           $exe = "dist\setup_jarvis_v$ver.exe"
           $signed = "dist\setup_jarvis_v$ver-signed.exe"
           
-          # Salva certificado do secret
           $certBytes = [Convert]::FromBase64String("${{ env.CODE_SIGN_CERT }}")
           $certPath = "$env:TEMP\codesign.pfx"
           [IO.File]::WriteAllBytes($certPath, $certBytes)
@@ -244,16 +242,6 @@ jobs:
             dist/setup_jarvis_v${{ steps.version.outputs.version }}-signed.exe.sha256
           draft: false
           prerelease: ${{ github.event.inputs.channel == 'beta' || github.event.inputs.channel == 'nightly' }}
-      
-      # ============================================================================
-      # SLSA PROVENANCE
-      # ============================================================================
-      - name: Generate SLSA Provenance
-        uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v1.9.0
-        if: github.event_name == 'push'
-        with:
-          base64-subjects: "${{ steps.compile.outputs.installer }}"
-          provenance-name: setup_jarvis.intoto.jsonl
 
   # ============================================================================
   # SLSA PROVENANCE GENERATION (separate job)
